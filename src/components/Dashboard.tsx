@@ -32,7 +32,7 @@ function Hero() {
   const pct = betweenPercent(state.startISO, state.endISO, new Date())
   return (
     <div className="hero">
-      <h2 className="text-2xl font-extrabold">Welcome to Paradise!</h2>
+      <h2 className="text-2xl font-extrabold">Welcome to your personalised travel hub</h2>
       <p className="mt-1 text-white/90 text-sm">A trip to Koh Samui & Doha</p>
       <div className="mt-4">
         <div className="flex justify-between text-sm">
@@ -336,20 +336,14 @@ function CurrencyConverter() {
         </div>
       </div>
 
-      {/* Inputs */}
+      {/* Inputs, selects in headers so the number field gets full width */}
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
+        {/* FROM card */}
         <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
-          <label className="text-xs text-gray-600">From</label>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              className="w-full text-lg font-semibold outline-none"
-              type="number"
-              min={0}
-              value={amount}
-              onChange={e => setAmount(Number(e.target.value))}
-            />
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-gray-600">From</label>
             <select
-              className="rounded-lg bg-gray-100 px-2 py-1 text-sm"
+              className="w-[72px] sm:w-[84px] rounded-lg bg-gray-100 px-2 py-1 text-sm text-gray-800"
               value={from}
               onChange={e => setFrom(e.target.value as Currency)}
             >
@@ -358,8 +352,17 @@ function CurrencyConverter() {
               <option>QAR</option>
             </select>
           </div>
+          <input
+            className="mt-1 w-full tabular-nums text-right font-semibold text-[clamp(18px,5vw,26px)] outline-none"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            value={amount}
+            onChange={e => setAmount(Number(e.target.value))}
+          />
         </div>
 
+        {/* swap */}
         <button
           className="self-center rounded-2xl bg-gray-100 p-2 hover:bg-gray-200 active:scale-95 text-gray-700"
           onClick={swap}
@@ -369,12 +372,12 @@ function CurrencyConverter() {
           <ArrowLeftRight size={18} />
         </button>
 
+        {/* TO card */}
         <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
-          <label className="text-xs text-gray-600">To</label>
-          <div className="mt-1 flex items-center gap-2">
-            <input className="w-full text-lg font-semibold outline-none" value={result.toFixed(2)} readOnly />
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-gray-600">To</label>
             <select
-              className="rounded-lg bg-gray-100 px-2 py-1 text-sm"
+              className="w-[72px] sm:w-[84px] rounded-lg bg-gray-100 px-2 py-1 text-sm text-gray-800"
               value={to}
               onChange={e => setTo(e.target.value as Currency)}
             >
@@ -383,10 +386,15 @@ function CurrencyConverter() {
               <option>QAR</option>
             </select>
           </div>
+          <input
+            className="mt-1 w-full tabular-nums text-right font-semibold text-[clamp(18px,5vw,26px)] outline-none"
+            value={result.toFixed(2)}
+            readOnly
+          />
         </div>
       </div>
 
-      {/* One compact pill row, left picks source, right picks target */}
+      {/* Compact pill row */}
       <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
