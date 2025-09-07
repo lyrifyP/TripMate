@@ -6,7 +6,9 @@ import type { Currency, WeatherData } from '../types'
 import {
   PoundSterling, Eye, Utensils, ListChecks,
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
-  Plane, PlaneTakeoff, PlaneLanding, CalendarClock, ChevronRight
+  Plane, PlaneTakeoff, PlaneLanding, CalendarClock, ChevronRight, ArrowLeftRight,
+  RefreshCw,
+  Info
 } from 'lucide-react'
 
 
@@ -270,68 +272,153 @@ function CurrencyConverter() {
   const [from, setFrom] = useState<Currency>('GBP')
   const [to, setTo] = useState<Currency>('THB')
   const [loading, setLoading] = useState(false)
-  const result = useMemo(
-    () => convert(amount, from, to, state.rates),
-    [amount, from, to, state.rates]
-  )
+
+  const result = useMemo(() => convert(amount, from, to, state.rates), [amount, from, to, state.rates])
+  const oneFromTo = useMemo(() => convert(1, from, to, state.rates), [from, to, state.rates])
+  const oneToFrom = useMemo(() => convert(1, to, from, state.rates), [from, to, state.rates])
 
   async function refreshRates() {
     try {
       setLoading(true)
       const live = await fetchLiveRates()
-      setState(s => ({ ...s, rates: { ...s.rates, ...live, manualOverride: false } }))
-    } catch (e: any) {
-      alert('Could not fetch live rates, ' + (e?.message ?? 'unknown error'))
+      setState(s => ({
+        ...s,
+        rates: { ...s.rates, ...live, manualOverride: false, lastUpdatedISO: new Date().toISOString() }
+      }))
+    } catch {
+      alert('Could not fetch live rates')
     } finally {
       setLoading(false)
     }
   }
 
+  function swap() {
+    setFrom(to)
+    setTo(from)
+  }
+
+  const pillBtn = (active: boolean) =>
+    'px-3 py-1.5 rounded-xl text-sm ' + (active ? 'bg-white/20' : 'bg-white/10 hover:bg-white/15')
+
   return (
-    <div className="card-lg">
+    <div className="rounded-2xl p-4 bg-gradient-to-br from-indigo-500 to-sky-500 text-white shadow-lg">
       <div className="flex items-center justify-between">
-        <h3 className="section-title">Currency converter</h3>
+        <h3 className="text-base font-semibold">Currency converter</h3>
         <div className="flex items-center gap-2">
-          <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={refreshRates} disabled={loading}>
-            {loading ? 'Refreshing…' : 'Refresh live'}
+          <button
+            onClick={refreshRates}
+            className={'rounded-xl px-3 py-1 text-sm bg-white/15 backdrop-blur inline-flex items-center gap-2 ' + (loading ? 'opacity-70' : 'hover:bg-white/20')}
+            disabled={loading}
+            title="Fetch live rates"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Refreshing' : 'Refresh'}
           </button>
           <button
-            className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
             onClick={() =>
-              setState(s => ({ ...s, rates: { ...s.rates, manualOverride: true, lastUpdatedISO: new Date().toISOString() } }))
+              setState(s => ({
+                ...s,
+                rates: { ...s.rates, manualOverride: true, lastUpdatedISO: new Date().toISOString() }
+              }))
             }
-            title="Stop auto updates until you refresh"
+            className="rounded-xl px-3 py-1 text-sm bg-white/15 backdrop-blur hover:bg-white/20"
+            title="Pause auto updates until you refresh"
           >
-            Override rates
+            Override
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <input
-          className="card"
-          type="number"
-          value={amount}
-          min={0}
-          onChange={(e) => setAmount(Number(e.target.value))}
-        />
-        <select className="card" value={from} onChange={(e) => setFrom(e.target.value as Currency)}>
-          <option>GBP</option>
-          <option>THB</option>
-          <option>QAR</option>
-        </select>
-        <input className="card" value={result.toFixed(2)} readOnly />
-        <select className="card" value={to} onChange={(e) => setTo(e.target.value as Currency)}>
-          <option>GBP</option>
-          <option>THB</option>
-          <option>QAR</option>
-        </select>
+      {/* Amount cards */}
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
+        <div className="rounded-2xl bg-white text-gray-900 p-3">
+          <label className="text-xs text-gray-600">From</label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              className="w-full text-lg font-semibold outline-none"
+              type="number"
+              min={0}
+              value={amount}
+              onChange={e => setAmount(Number(e.target.value))}
+            />
+            <select
+              className="rounded-lg bg-gray-100 px-2 py-1 text-sm"
+              value={from}
+              onChange={e => setFrom(e.target.value as Currency)}
+            >
+              <option>GBP</option>
+              <option>THB</option>
+              <option>QAR</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          className="self-center rounded-2xl bg-white/20 p-2 hover:bg-white/25 active:scale-95"
+          onClick={swap}
+          title="Swap"
+          aria-label="Swap"
+        >
+          <ArrowLeftRight size={18} />
+        </button>
+
+        <div className="rounded-2xl bg-white text-gray-900 p-3">
+          <label className="text-xs text-gray-600">To</label>
+          <div className="mt-1 flex items-center gap-2">
+            <input className="w-full text-lg font-semibold outline-none" value={result.toFixed(2)} readOnly />
+            <select
+              className="rounded-lg bg-gray-100 px-2 py-1 text-sm"
+              value={to}
+              onChange={e => setTo(e.target.value as Currency)}
+            >
+              <option>GBP</option>
+              <option>THB</option>
+              <option>QAR</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <p className="mt-2 text-xs text-gray-500">
-        Last updated {state.rates.lastUpdatedISO ? new Date(state.rates.lastUpdatedISO).toLocaleString() : 'n/a'}
-        {state.rates.manualOverride ? ', manual override is on' : ''}
-      </p>
+      {/* Quick currency pills */}
+      <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
+            <button key={'f-' + c} onClick={() => setFrom(c)} className={pillBtn(from === c)}>{c}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
+            <button key={'t-' + c} onClick={() => setTo(c)} className={pillBtn(to === c)}>{c}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Live rate line */}
+      <div className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Info size={14} className="opacity-80" />
+          <span>
+            1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}
+          </span>
+        </div>
+        <span className="text-xs opacity-90">
+          {state.rates.lastUpdatedISO
+            ? new Date(state.rates.lastUpdatedISO).toLocaleString()
+            : 'no update yet'}
+        </span>
+      </div>
+
+      {/* Status chips */}
+      <div className="mt-2 flex items-center gap-2 text-[11px]">
+        <span className="px-2 py-0.5 rounded-lg bg-white/15">
+          Source, live FX when available
+        </span>
+        {state.rates.manualOverride && (
+          <span className="px-2 py-0.5 rounded-lg bg-yellow-400/30 text-white">
+            Manual override is on
+          </span>
+        )}
+      </div>
     </div>
   )
 }
