@@ -1,7 +1,7 @@
 import React, { useEffect, useState, createContext } from 'react'
 import { Home as HomeIcon, DollarSign, UtensilsCrossed, CheckSquare, Calendar } from 'lucide-react'
 import { load, save } from './lib/storage'
-import { defaultRates } from './lib/currency'
+import { defaultRates, fetchLiveRates } from './lib/currency'
 import type { AppState, Restaurant, ChecklistItem, PlanItem } from './types'
 
 import Dashboard from './components/Dashboard'
@@ -14,6 +14,8 @@ import Planner from './components/Planner'
 import restaurantsSeed from './seed/restaurants.json'
 import checklistSeed from './seed/checklist.json'
 import planSeed from './seed/plan.json'
+
+
 
 type Tab = 'home' | 'budget' | 'dining' | 'checklist' | 'planner'
 
@@ -60,6 +62,24 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [state, setState] = useState<AppState>(() => load(DEFAULT_STATE))
   useEffect(() => save(state), [state])
+
+  // ✅ ADD THIS BLOCK just below
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      try {
+        if (state.rates.manualOverride) return // skip if user set override
+        const live = await fetchLiveRates()
+        if (!cancelled) {
+          setState(s => ({ ...s, rates: { ...s.rates, ...live } }))
+        }
+      } catch {
+        // ignore errors, keep default rates
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, []) // run once on mount
 
   const tabs = [
     { id: 'home' as Tab, label: 'Home', icon: HomeIcon, component: Dashboard },

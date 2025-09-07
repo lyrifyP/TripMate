@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { AppContext } from '../App'
 import { betweenPercent, countdown, fmtDate } from '../lib/utils'
-import { convert } from '../lib/currency'
+import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
 import {
   PoundSterling,
@@ -120,9 +120,7 @@ function WeatherBlock() {
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   return (
@@ -199,27 +197,44 @@ function CurrencyConverter() {
   const [amount, setAmount] = useState(100)
   const [from, setFrom] = useState<Currency>('GBP')
   const [to, setTo] = useState<Currency>('THB')
+  const [loading, setLoading] = useState(false)
   const result = useMemo(
     () => convert(amount, from, to, state.rates),
     [amount, from, to, state.rates]
   )
 
+  async function refreshRates() {
+    try {
+      setLoading(true)
+      const live = await fetchLiveRates()
+      setState(s => ({ ...s, rates: { ...s.rates, ...live, manualOverride: false } }))
+    } catch {
+      alert('Could not fetch live rates')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="card-lg">
       <div className="flex items-center justify-between">
         <h3 className="section-title">Currency converter</h3>
-        <button
-          className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
-          onClick={() =>
-            setState((s) => ({
-              ...s,
-              rates: { ...s.rates, manualOverride: true, lastUpdatedISO: new Date().toISOString() },
-            }))
-          }
-        >
-          Override rates
-        </button>
+        <div className="flex items-center gap-2">
+          <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={refreshRates} disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh live'}
+          </button>
+          <button
+            className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+            onClick={() =>
+              setState(s => ({ ...s, rates: { ...s.rates, manualOverride: true, lastUpdatedISO: new Date().toISOString() } }))
+            }
+            title="Stop auto updates until you refresh"
+          >
+            Override rates
+          </button>
+        </div>
       </div>
+
       <div className="grid grid-cols-2 gap-2 mt-3">
         <input
           className="card"
@@ -240,6 +255,11 @@ function CurrencyConverter() {
           <option>QAR</option>
         </select>
       </div>
+
+      <p className="mt-2 text-xs text-gray-500">
+        Last updated {state.rates.lastUpdatedISO ? new Date(state.rates.lastUpdatedISO).toLocaleString() : 'n/a'}
+        {state.rates.manualOverride ? ', manual override is on' : ''}
+      </p>
     </div>
   )
 }
@@ -248,13 +268,13 @@ function Countdowns() {
   const { state } = useContext(AppContext)
   const [, setTick] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000)
+    const id = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(id)
   }, [])
   return (
     <div className="card-lg space-y-2">
       <h3 className="section-title">Countdowns</h3>
-      {state.specialEvents.map((ev) => (
+      {state.specialEvents.map(ev => (
         <CountdownRow key={ev.id} label={ev.label} atISO={ev.atISO} />
       ))}
     </div>
@@ -292,7 +312,7 @@ function SyncBlock() {
           <h3 className="font-semibold">Sync</h3>
           <p className="text-sm text-gray-600">Share or paste trip data between two devices</p>
         </div>
-        <button className="rounded-xl bg-gray-100 px-3 py-1" onClick={() => setOpen((v) => !v)}>
+        <button className="rounded-xl bg-gray-100 px-3 py-1" onClick={() => setOpen(v => !v)}>
           {open ? 'Close' : 'Open'}
         </button>
       </div>
