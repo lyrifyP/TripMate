@@ -1,38 +1,65 @@
-import React, { useEffect, useState, createContext } from 'react';
-import { Home as HomeIcon, DollarSign, UtensilsCrossed, CheckSquare, Calendar } from 'lucide-react';
-import { load, save } from './lib/storage';
-import { defaultRates } from './lib/currency';
-import type { AppState } from './types';
+import React, { useEffect, useState, createContext } from 'react'
+import { Home as HomeIcon, DollarSign, UtensilsCrossed, CheckSquare, Calendar } from 'lucide-react'
+import { load, save } from './lib/storage'
+import { defaultRates } from './lib/currency'
+import type { AppState, Restaurant, ChecklistItem, PlanItem } from './types'
 
-import Dashboard from './components/Dashboard';
-import Budget from './components/Budget';
-import Dining from './components/Dining';
-import Checklist from './components/Checklist';
-import Planner from './components/Planner';
+import Dashboard from './components/Dashboard'
+import Budget from './components/Budget'
+import Dining from './components/Dining'
+import Checklist from './components/Checklist'
+import Planner from './components/Planner'
 
-type Tab = 'home' | 'budget' | 'dining' | 'checklist' | 'planner';
+// import JSON seeds and coerce union fields
+import restaurantsSeed from './seed/restaurants.json'
+import checklistSeed from './seed/checklist.json'
+import planSeed from './seed/plan.json'
+
+type Tab = 'home' | 'budget' | 'dining' | 'checklist' | 'planner'
+
+const restaurantsTyped: Restaurant[] = (restaurantsSeed as any[]).map(r => ({
+  ...r,
+  area: r.area as 'Samui' | 'Doha',
+  priceTier: r.priceTier as '£' | '££' | '£££',
+}))
+
+const checklistTyped: ChecklistItem[] = (checklistSeed as any[]).map(i => ({
+  ...i,
+  area: i.area as 'Samui' | 'Doha',
+  type: i.type as 'Food' | 'Activity',
+}))
+
+const planTyped: PlanItem[] = (planSeed as any[]).map(p => ({
+  ...p,
+  area: p.area as 'Samui' | 'Doha',
+  kind: p.kind as 'Activity' | 'Meal' | 'Note',
+}))
 
 const DEFAULT_STATE: AppState = {
   startISO: '2025-09-16',
   endISO: '2025-09-29',
   spends: [],
   rates: defaultRates(),
-  restaurants: (await import('./seed/restaurants.json')).default,
-  checklist: (await import('./seed/checklist.json')).default,
-  plan: (await import('./seed/plan.json')).default,
+  restaurants: restaurantsTyped,
+  checklist: checklistTyped,
+  plan: planTyped,
   specialEvents: [
     { id: 'flight-out', label: 'Flight to Samui', atISO: '2025-09-16T10:00:00Z' },
-    { id: 'flight-back', label: 'Flight home', atISO: '2025-09-29T13:00:00Z' }
-  ]
-};
+    { id: 'flight-back', label: 'Flight home', atISO: '2025-09-29T13:00:00Z' },
+  ],
+}
 
-type Ctx = { state: AppState, setState: React.Dispatch<React.SetStateAction<AppState>>, setActiveTab: (t: Tab) => void }
-export const AppContext = createContext<Ctx>(null as any);
+type Ctx = {
+  state: AppState
+  setState: React.Dispatch<React.SetStateAction<AppState>>
+  setActiveTab: (t: Tab) => void
+}
+export const AppContext = createContext<Ctx>(null as any)
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [state, setState] = useState<AppState>(() => load(DEFAULT_STATE));
-  useEffect(() => save(state), [state]);
+  const [activeTab, setActiveTab] = useState<Tab>('home')
+  const [state, setState] = useState<AppState>(() => load(DEFAULT_STATE))
+  useEffect(() => save(state), [state])
 
   const tabs = [
     { id: 'home' as Tab, label: 'Home', icon: HomeIcon, component: Dashboard },
@@ -40,8 +67,8 @@ export default function App() {
     { id: 'dining' as Tab, label: 'Dining', icon: UtensilsCrossed, component: Dining },
     { id: 'checklist' as Tab, label: 'Lists', icon: CheckSquare, component: Checklist },
     { id: 'planner' as Tab, label: 'Plan', icon: Calendar, component: Planner },
-  ] as const;
-  const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || Dashboard;
+  ] as const
+  const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || Dashboard
 
   return (
     <AppContext.Provider value={{ state, setState, setActiveTab }}>
@@ -58,19 +85,23 @@ export default function App() {
 
         <nav className="navbar">
           <div className="max-w-md mx-auto flex justify-around">
-            {tabs.map((tab) => {
-              const Icon = tab.icon; const isActive = activeTab === tab.id;
+            {tabs.map(tab => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`navbtn ${isActive ? 'navbtn-active' : 'navbtn-idle'}`}>
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`navbtn ${isActive ? 'navbtn-active' : 'navbtn-idle'}`}
+                >
                   <Icon size={20} className="mb-1" />
                   <span className="text-xs font-medium">{tab.label}</span>
                 </button>
-              );
+              )
             })}
           </div>
         </nav>
       </div>
     </AppContext.Provider>
-  );
+  )
 }
