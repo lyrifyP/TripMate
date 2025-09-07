@@ -8,6 +8,9 @@ import {
   Trash2,
   Search,
   RefreshCw,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
 
 type AreaScope = 'All' | Area
@@ -34,11 +37,13 @@ const TODAY = todayISO()
 export default function Planner() {
   const { state, setState } = useContext(AppContext)
 
+  // filters
   const [q, setQ] = useState('')
   const [areaScope, setAreaScope] = useState<AreaScope>('All')
   const [kindScope, setKindScope] = useState<KindScope>('All')
   const [dayScope, setDayScope] = useState<DayScope>('All days')
 
+  // add sheet
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Draft>({
     date: TODAY,
@@ -49,6 +54,18 @@ export default function Planner() {
     notes: '',
   })
 
+  // edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [edit, setEdit] = useState<Draft>({
+    date: TODAY,
+    time: '',
+    area: 'Samui',
+    kind: 'Activity',
+    title: '',
+    notes: '',
+  })
+
+  // derive groups
   const groups = useMemo(() => {
     const ql = q.trim().toLowerCase()
     const passQ = (p: PlanItem) => (ql ? `${p.title} ${p.notes ?? ''}`.toLowerCase().includes(ql) : true)
@@ -112,6 +129,46 @@ export default function Planner() {
 
   function remove(id: string) {
     setState(s => ({ ...s, plan: s.plan.filter(p => p.id !== id) }))
+    if (editingId === id) setEditingId(null)
+  }
+
+  function beginEdit(item: PlanItem) {
+    setEditingId(item.id)
+    setEdit({
+      date: item.date,
+      time: item.time ?? '',
+      area: item.area,
+      kind: item.kind,
+      title: item.title,
+      notes: item.notes ?? '',
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+  }
+
+  function saveEdit() {
+    if (!editingId) return
+    const title = edit.title.trim()
+    if (!title) return
+    setState(s => ({
+      ...s,
+      plan: s.plan.map(p =>
+        p.id === editingId
+          ? {
+              ...p,
+              date: edit.date,
+              time: edit.time?.trim() || undefined,
+              area: edit.area,
+              kind: edit.kind,
+              title,
+              notes: edit.notes?.trim() || undefined,
+            }
+          : p
+      ),
+    }))
+    setEditingId(null)
   }
 
   async function resetToDefaults() {
@@ -125,6 +182,7 @@ export default function Planner() {
         kind: p.kind as 'Activity' | 'Meal' | 'Note',
       }))
       setState(s => ({ ...s, plan: typed }))
+      setEditingId(null)
     } catch {
       alert('Could not load default plan')
     }
@@ -301,7 +359,18 @@ export default function Planner() {
       ) : (
         <div className="space-y-3">
           {groups.map(([date, items]) => (
-            <DayCard key={date} date={date} items={items} onRemove={remove} />
+            <DayCard
+              key={date}
+              date={date}
+              items={items}
+              editingId={editingId}
+              edit={edit}
+              setEdit={setEdit}
+              onBeginEdit={beginEdit}
+              onCancelEdit={cancelEdit}
+              onSaveEdit={saveEdit}
+              onRemove={remove}
+            />
           ))}
         </div>
       )}
@@ -312,10 +381,22 @@ export default function Planner() {
 function DayCard({
   date,
   items,
+  editingId,
+  edit,
+  setEdit,
+  onBeginEdit,
+  onCancelEdit,
+  onSaveEdit,
   onRemove,
 }: {
   date: string
   items: PlanItem[]
+  editingId: string | null
+  edit: Draft
+  setEdit: React.Dispatch<React.SetStateAction<Draft>>
+  onBeginEdit: (item: PlanItem) => void
+  onCancelEdit: () => void
+  onSaveEdit: () => void
   onRemove: (id: string) => void
 }) {
   const areas = Array.from(new Set(items.map(i => i.area)))
@@ -343,14 +424,104 @@ function DayCard({
 
       <div className="divide-y divide-gray-100">
         {items.map(i => (
-          <PlanRow key={i.id} item={i} onRemove={onRemove} />
+          <PlanRow
+            key={i.id}
+            item={i}
+            editing={editingId === i.id}
+            edit={edit}
+            setEdit={setEdit}
+            onBeginEdit={() => onBeginEdit(i)}
+            onCancelEdit={onCancelEdit}
+            onSaveEdit={onSaveEdit}
+            onRemove={onRemove}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function PlanRow({ item, onRemove }: { item: PlanItem, onRemove: (id: string) => void }) {
+function PlanRow({
+  item,
+  editing,
+  edit,
+  setEdit,
+  onBeginEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onRemove,
+}: {
+  item: PlanItem
+  editing: boolean
+  edit: Draft
+  setEdit: React.Dispatch<React.SetStateAction<Draft>>
+  onBeginEdit: () => void
+  onCancelEdit: () => void
+  onSaveEdit: () => void
+  onRemove: (id: string) => void
+}) {
+  if (editing) {
+    return (
+      <div className="py-2">
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            className="card"
+            type="date"
+            value={edit.date}
+            onChange={(e) => setEdit(d => ({ ...d, date: e.target.value }))}
+          />
+          <input
+            className="card"
+            type="time"
+            value={edit.time}
+            onChange={(e) => setEdit(d => ({ ...d, time: e.target.value }))}
+          />
+          <select
+            className="card"
+            value={edit.area}
+            onChange={(e) => setEdit(d => ({ ...d, area: e.target.value as Area }))}
+          >
+            <option>Samui</option>
+            <option>Doha</option>
+          </select>
+          <select
+            className="card"
+            value={edit.kind}
+            onChange={(e) => setEdit(d => ({ ...d, kind: e.target.value as Draft['kind'] }))}
+          >
+            <option>Activity</option>
+            <option>Meal</option>
+            <option>Note</option>
+          </select>
+          <input
+            className="card col-span-2"
+            placeholder="Title"
+            value={edit.title}
+            onChange={(e) => setEdit(d => ({ ...d, title: e.target.value }))}
+          />
+          <input
+            className="card col-span-2"
+            placeholder="Notes, optional"
+            value={edit.notes}
+            onChange={(e) => setEdit(d => ({ ...d, notes: e.target.value }))}
+          />
+        </div>
+
+        <div className="mt-2 flex items-center gap-2">
+          <button className="tile flex items-center gap-2" onClick={onSaveEdit}>
+            <Check size={16} /> Save
+          </button>
+          <button
+            className="rounded-xl px-3 py-2 text-sm text-gray-700 bg-gray-100 flex items-center gap-2"
+            onClick={onCancelEdit}
+          >
+            <X size={16} /> Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="py-2 flex items-start justify-between gap-3">
       <div className="flex items-start gap-3 min-w-0">
@@ -367,14 +538,24 @@ function PlanRow({ item, onRemove }: { item: PlanItem, onRemove: (id: string) =>
         </div>
       </div>
 
-      <button
-        className="rounded-xl p-2 hover:bg-gray-100 text-gray-600"
-        onClick={() => onRemove(item.id)}
-        aria-label="Delete"
-        title="Delete"
-      >
-        <Trash2 size={16} />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          className="rounded-xl p-2 hover:bg-gray-100 text-gray-600"
+          onClick={onBeginEdit}
+          aria-label="Edit"
+          title="Edit"
+        >
+          <Pencil size={16} />
+        </button>
+        <button
+          className="rounded-xl p-2 hover:bg-gray-100 text-gray-600"
+          onClick={() => onRemove(item.id)}
+          aria-label="Delete"
+          title="Delete"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
     </div>
   )
 }
