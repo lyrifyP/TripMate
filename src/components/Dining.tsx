@@ -7,7 +7,6 @@ import {
   Heart,
   HeartOff,
   MapPin,
-  Filter as FilterIcon,
   Tags,
   Star,
   Search,
@@ -86,8 +85,8 @@ export default function Dining() {
 
   return (
     <div className="space-y-4">
-      {/* Gradient header */}
-      <div className="rounded-2xl p-4 bg-gradient-to-br from-pink-500 to-rose-500 text-white shadow-lg">
+      {/* Gradient header, overflow hidden to avoid horizontal scroll on small screens */}
+      <div className="rounded-2xl p-4 bg-gradient-to-br from-pink-500 to-rose-500 text-white shadow-lg overflow-hidden">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Utensils size={18} /> Dining
@@ -102,7 +101,7 @@ export default function Dining() {
 
         {/* Quick filter row */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="relative">
+          <div className="relative min-w-0">
             <span className="absolute left-2 top-2.5 opacity-80"><Search size={16} /></span>
             <input
               className="w-full pl-8 pr-3 py-2 rounded-xl bg-white/10 placeholder-white/70 text-white border border-white/20"
@@ -111,7 +110,7 @@ export default function Dining() {
               onChange={e => setFilter(f => ({ ...f, q: e.target.value }))}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               className={'px-3 py-1 rounded-lg text-sm ' + (filter.area === 'All' ? 'bg-white/20' : 'bg-white/10')}
               onClick={() => setFilter(f => ({ ...f, area: f.area === 'All' ? 'Samui' : f.area === 'Samui' ? 'Doha' : 'All' }))}
@@ -127,7 +126,7 @@ export default function Dining() {
               {filter.favOnly ? 'Favourites' : 'All'}
             </button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <select
               className="flex-1 rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
               value={filter.price}
@@ -173,10 +172,10 @@ export default function Dining() {
 }
 
 function RestaurantCard({ r, toggleFav }: { r: Restaurant, toggleFav: (id: string) => void }) {
-  // Approx local cost preview from approxCostGBP if available
+  const { state } = useContext(AppContext)
   const local = r.area === 'Samui' ? 'THB' as const : 'QAR' as const
   const approxLocal = typeof r.approxCostGBP === 'number'
-    ? Math.round(convert(r.approxCostGBP, 'GBP', local, (window as any).__APP_STATE?.rates ?? { GBP:1, THB:46, QAR:4.6 }))
+    ? Math.round(convert(r.approxCostGBP, 'GBP', local, state.rates))
     : null
 
   return (
@@ -190,7 +189,7 @@ function RestaurantCard({ r, toggleFav }: { r: Restaurant, toggleFav: (id: strin
             </span>
             <span className="text-xs text-gray-500">{r.priceTier}</span>
           </div>
-          <div className="text-xs text-gray-600 mt-0.5 flex items-center gap-2">
+          <div className="text-xs text-gray-600 mt-0.5 flex items-center gap-2 flex-wrap">
             <Tags size={14} />
             <span>{r.cuisine}</span>
             {r.tags?.length ? <span className="text-gray-400">,</span> : null}
@@ -237,9 +236,8 @@ function RestaurantCard({ r, toggleFav }: { r: Restaurant, toggleFav: (id: strin
 }
 
 /**
- * Curated list taken from your dining notes for Samui and Doha.
- * These entries focus on the places you highlighted, with tags and price tiers.
- * You can run "Add curated picks" once, duplicates are skipped by id.
+ * Curated list for Samui and Doha, tweak as you like.
+ * Run once with the button, duplicates are skipped by id.
  */
 function curatedRestaurants(): Restaurant[] {
   const m = (q: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
@@ -265,11 +263,10 @@ function curatedRestaurants(): Restaurant[] {
     favourite: false,
   })
 
-  // Rough GBP estimates, you can fine tune in JSON if you like.
   return [
-    // Koh Samui, top picks
+    // Koh Samui
     make('samui-view', 'The View Dining', 'Samui', 'Mediterranean fusion', '£££',
-      ['fine dining', 'on-site', 'romantic'], 'On-site', 110), // ~THB 4,000 to 6,000 for two
+      ['fine dining', 'on-site', 'romantic'], 'On-site', 110),
     make('samui-ranch', 'The Ranch', 'Samui', 'Steakhouse', '£££',
       ['upscale', 'on-site'], 'On-site', 120),
     make('samui-longdtai', 'Long Dtai', 'Samui', 'Southern Thai', '£££',
@@ -278,8 +275,6 @@ function curatedRestaurants(): Restaurant[] {
       ['sea view'], '25 to 30 minutes', 90),
     make('samui-chezfrancois', 'Chez François', 'Samui', 'French bistro', '££',
       ['fisherman village'], '10 to 15 minutes', 75),
-
-    // Koh Samui, hidden Thai gems
     make('samui-ran-khang-non', 'Ran Khang Non', 'Samui', 'Northern Thai', '£',
       ['hidden gem', 'family run', 'local'], '10 to 15 minutes', 15),
     make('samui-ran-lan-saka', 'Ran Lan Saka', 'Samui', 'Southern Thai curries', '£',
@@ -291,9 +286,9 @@ function curatedRestaurants(): Restaurant[] {
     make('samui-pa-yang', 'Pa Yang Restaurant', 'Samui', 'Isan grill and som tam', '£',
       ['grilled chicken', 'local'], '15 to 20 minutes', 6),
 
-    // Doha, local gems
-    make('doha-shay-al-shomous', 'Shay Al Shomous', 'Doha', 'Qatari breakfast', '£',
-      ['souq waqif', 'local'], 'Souq Waqif', 18),
+    // Doha
+    make('doha-al-aker', 'Al Aker Sweets', 'Doha', 'Middle Eastern sweets', '£',
+      ['kunafa', 'desserts'], 'Multiple branches', 10),
     make('doha-bandar-aden', 'Bandar Aden Restaurant', 'Doha', 'Yemeni', '£',
       ['mandi', 'value'], 'Souq Waqif', 28),
     make('doha-kabab-al-tayab', 'Kabab Al Tayab', 'Doha', 'Grillhouse', '£',
@@ -302,14 +297,10 @@ function curatedRestaurants(): Restaurant[] {
       ['mezze', 'popular'], 'Al Nasr', 22),
     make('doha-mashawi-al-arabi', 'Mashawi Al Arabi', 'Doha', 'Arabic grills and breads', '£',
       ['casual'], 'Al Mansoura', 18),
-
-    // Doha, cultural and fine dining, plus desserts
     make('doha-bayt-sharq', 'Bayt Sharq', 'Doha', 'Traditional Qatari', '££',
       ['heritage', 'courtyard'], 'Msheireb area', 55),
     make('doha-saasna', 'Saasna', 'Doha', 'Contemporary Qatari', '££',
       ['msheireb'], 'Msheireb Downtown', 65),
-    make('doha-al-aker', 'Al Aker Sweets', 'Doha', 'Middle Eastern sweets', '£',
-      ['kunafa', 'desserts'], 'Multiple branches', 10),
     make('doha-sugar-and-spice', 'Sugar and Spice', 'Doha', 'Cakes and brunch', '£',
       ['aspire park', 'desserts'], 'Aspire Park', 16),
     make('doha-chac-late', 'Chac’Late', 'Doha', 'Pastry and chocolate', '££',
