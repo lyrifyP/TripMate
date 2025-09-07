@@ -297,17 +297,19 @@ function CurrencyConverter() {
     setTo(from)
   }
 
-  const pillBtn = (active: boolean) =>
-    'px-3 py-1.5 rounded-xl text-sm ' + (active ? 'bg-white/20' : 'bg-white/10 hover:bg-white/15')
+  const segBtn = (active: boolean) =>
+    'px-3 py-1.5 rounded-xl text-sm transition ' +
+    (active ? 'bg-sky-100 text-sky-800 border border-sky-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
 
   return (
-    <div className="rounded-2xl p-4 bg-gradient-to-br from-indigo-500 to-sky-500 text-white shadow-lg">
+    <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">Currency converter</h3>
+        <h3 className="text-base font-semibold text-gray-900">Currency converter</h3>
         <div className="flex items-center gap-2">
           <button
             onClick={refreshRates}
-            className={'rounded-xl px-3 py-1 text-sm bg-white/15 backdrop-blur inline-flex items-center gap-2 ' + (loading ? 'opacity-70' : 'hover:bg-white/20')}
+            className="rounded-xl bg-gray-100 px-3 py-1 text-sm text-gray-800 hover:bg-gray-200 disabled:opacity-60 inline-flex items-center gap-2"
             disabled={loading}
             title="Fetch live rates"
           >
@@ -318,20 +320,25 @@ function CurrencyConverter() {
             onClick={() =>
               setState(s => ({
                 ...s,
-                rates: { ...s.rates, manualOverride: true, lastUpdatedISO: new Date().toISOString() }
+                rates: { ...s.rates, manualOverride: !s.rates.manualOverride, lastUpdatedISO: new Date().toISOString() }
               }))
             }
-            className="rounded-xl px-3 py-1 text-sm bg-white/15 backdrop-blur hover:bg-white/20"
-            title="Pause auto updates until you refresh"
+            className={
+              'rounded-full px-2.5 py-1 text-xs border ' +
+              (state.rates.manualOverride
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-white text-gray-600 border-gray-200')
+            }
+            title="Toggle manual override"
           >
-            Override
+            {state.rates.manualOverride ? 'Override on' : 'Override off'}
           </button>
         </div>
       </div>
 
-      {/* Amount cards */}
+      {/* Inputs */}
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
-        <div className="rounded-2xl bg-white text-gray-900 p-3">
+        <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
           <label className="text-xs text-gray-600">From</label>
           <div className="mt-1 flex items-center gap-2">
             <input
@@ -354,7 +361,7 @@ function CurrencyConverter() {
         </div>
 
         <button
-          className="self-center rounded-2xl bg-white/20 p-2 hover:bg-white/25 active:scale-95"
+          className="self-center rounded-2xl bg-gray-100 p-2 hover:bg-gray-200 active:scale-95 text-gray-700"
           onClick={swap}
           title="Swap"
           aria-label="Swap"
@@ -362,7 +369,7 @@ function CurrencyConverter() {
           <ArrowLeftRight size={18} />
         </button>
 
-        <div className="rounded-2xl bg-white text-gray-900 p-3">
+        <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
           <label className="text-xs text-gray-600">To</label>
           <div className="mt-1 flex items-center gap-2">
             <input className="w-full text-lg font-semibold outline-none" value={result.toFixed(2)} readOnly />
@@ -379,49 +386,40 @@ function CurrencyConverter() {
         </div>
       </div>
 
-      {/* Quick currency pills */}
+      {/* One compact pill row, left picks source, right picks target */}
       <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
-            <button key={'f-' + c} onClick={() => setFrom(c)} className={pillBtn(from === c)}>{c}</button>
+            <button key={'from-' + c} onClick={() => setFrom(c)} className={segBtn(from === c)}>
+              {c}
+            </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
           {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
-            <button key={'t-' + c} onClick={() => setTo(c)} className={pillBtn(to === c)}>{c}</button>
+            <button key={'to-' + c} onClick={() => setTo(c)} className={segBtn(to === c)}>
+              {c}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Live rate line */}
-      <div className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Subtle rate line */}
+      <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-sm flex items-center justify-between">
+        <div className="flex items-center gap-2 text-gray-700">
           <Info size={14} className="opacity-80" />
           <span>
             1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}
           </span>
         </div>
-        <span className="text-xs opacity-90">
-          {state.rates.lastUpdatedISO
-            ? new Date(state.rates.lastUpdatedISO).toLocaleString()
-            : 'no update yet'}
+        <span className="text-xs text-gray-500">
+          {state.rates.lastUpdatedISO ? new Date(state.rates.lastUpdatedISO).toLocaleTimeString() : 'no update yet'}
         </span>
-      </div>
-
-      {/* Status chips */}
-      <div className="mt-2 flex items-center gap-2 text-[11px]">
-        <span className="px-2 py-0.5 rounded-lg bg-white/15">
-          Source, live FX when available
-        </span>
-        {state.rates.manualOverride && (
-          <span className="px-2 py-0.5 rounded-lg bg-yellow-400/30 text-white">
-            Manual override is on
-          </span>
-        )}
       </div>
     </div>
   )
 }
+
 
 function Countdowns() {
   const { state } = useContext(AppContext)
