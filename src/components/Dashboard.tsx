@@ -396,7 +396,7 @@ function CurrencyConverter() {
 
       {/* Compact pill row */}
       <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
           {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
             <button key={'from-' + c} onClick={() => setFrom(c)} className={segBtn(from === c)}>
               {c}
