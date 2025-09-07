@@ -1,100 +1,48 @@
 [
-  {
-    "id": "p0",
-    "date": "2025-09-16",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p1",
-    "date": "2025-09-17",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p2",
-    "date": "2025-09-18",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p3",
-    "date": "2025-09-19",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p4",
-    "date": "2025-09-20",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p5",
-    "date": "2025-09-21",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p6",
-    "date": "2025-09-22",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p7",
-    "date": "2025-09-23",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p8",
-    "date": "2025-09-24",
-    "area": "Samui",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p9",
-    "date": "2025-09-25",
-    "area": "Doha",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p10",
-    "date": "2025-09-26",
-    "area": "Doha",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p11",
-    "date": "2025-09-27",
-    "area": "Doha",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p12",
-    "date": "2025-09-28",
-    "area": "Doha",
-    "kind": "Activity",
-    "title": "Free time"
-  },
-  {
-    "id": "p13",
-    "date": "2025-09-29",
-    "area": "Doha",
-    "kind": "Activity",
-    "title": "Free time"
-  }
+  { "id": "pl-2025-09-16-fly-samui", "date": "2025-09-16", "area": "Samui", "kind": "Activity", "title": "Flight to Samui", "notes": "Birmingham to Doha to Bangkok to Samui" },
+
+  { "id": "pl-2025-09-17-arrival", "date": "2025-09-17", "area": "Samui", "kind": "Activity", "title": "Arrive, check in, rest", "notes": "Morning arrival" },
+  { "id": "pl-2025-09-17-spa", "date": "2025-09-17", "area": "Samui", "kind": "Activity", "title": "Spa massage", "notes": "60 to 90 mins" },
+  { "id": "pl-2025-09-17-dinner-pak-tai", "date": "2025-09-17", "area": "Samui", "kind": "Meal", "title": "Dinner at Pak Tai", "time": "19:30", "notes": "On site" },
+
+  { "id": "pl-2025-09-18-temples", "date": "2025-09-18", "area": "Samui", "kind": "Activity", "title": "Big Buddha and Wat Plai Laem", "notes": "Morning" },
+  { "id": "pl-2025-09-18-leisure", "date": "2025-09-18", "area": "Samui", "kind": "Activity", "title": "Resort leisure", "notes": "Afternoon" },
+  { "id": "pl-2025-09-18-fisherman", "date": "2025-09-18", "area": "Samui", "kind": "Meal", "title": "Fisherman’s Village, Krua Bophut, drinks at Coco Tam’s", "notes": "Evening" },
+
+  { "id": "pl-2025-09-19-cooking", "date": "2025-09-19", "area": "Samui", "kind": "Activity", "title": "Island Organics cooking class", "notes": "Morning" },
+  { "id": "pl-2025-09-19-dinner-choice", "date": "2025-09-19", "area": "Samui", "kind": "Meal", "title": "Fisherman’s Village or Tree Tops", "notes": "Fine dining option" },
+
+  { "id": "pl-2025-09-20-tour", "date": "2025-09-20", "area": "Samui", "kind": "Activity", "title": "Island tour", "notes": "Na Mueang waterfalls, Secret Buddha Garden, viewpoints" },
+  { "id": "pl-2025-09-20-dotr", "date": "2025-09-20", "area": "Samui", "kind": "Meal", "title": "Dining on the Rocks", "notes": "Six Senses, evening" },
+
+  { "id": "pl-2025-09-21-spa-day", "date": "2025-09-21", "area": "Samui", "kind": "Activity", "title": "Couple spa ritual", "notes": "Half day" },
+  { "id": "pl-2025-09-21-supattra", "date": "2025-09-21", "area": "Samui", "kind": "Meal", "title": "Supattra Thai Dining", "notes": "Dinner" },
+
+  { "id": "pl-2025-09-22-elephant", "date": "2025-09-22", "area": "Samui", "kind": "Activity", "title": "Samui Elephant Sanctuary", "notes": "Morning" },
+  { "id": "pl-2025-09-22-chaweng", "date": "2025-09-22", "area": "Samui", "kind": "Meal", "title": "Chaweng area dinner" },
+
+  { "id": "pl-2025-09-23-easy", "date": "2025-09-23", "area": "Samui", "kind": "Activity", "title": "Easy day", "notes": "Resort leisure, spa, packing" },
+  { "id": "pl-2025-09-23-view", "date": "2025-09-23", "area": "Samui", "kind": "Meal", "title": "Dinner at The View", "notes": "On site" },
+
+  { "id": "pl-2025-09-24-breakfast", "date": "2025-09-24", "area": "Samui", "kind": "Meal", "title": "Breakfast, checkout" },
+  { "id": "pl-2025-09-24-fly-doha", "date": "2025-09-24", "area": "Doha", "kind": "Activity", "title": "Flight to Doha", "notes": "Transfer to airport" },
+  { "id": "pl-2025-09-24-arrive-doha", "date": "2025-09-24", "area": "Doha", "kind": "Activity", "title": "Arrive, check in" },
+
+  { "id": "pl-2025-09-25-recovery", "date": "2025-09-25", "area": "Doha", "kind": "Activity", "title": "Pool and rest" },
+  { "id": "pl-2025-09-25-katara", "date": "2025-09-25", "area": "Doha", "kind": "Activity", "title": "Katara Cultural Village", "notes": "Afternoon" },
+  { "id": "pl-2025-09-25-pearl", "date": "2025-09-25", "area": "Doha", "kind": "Activity", "title": "The Pearl canals", "notes": "Sunset" },
+
+  { "id": "pl-2025-09-26-msheireb", "date": "2025-09-26", "area": "Doha", "kind": "Activity", "title": "Msheireb Museums", "notes": "Afternoon" },
+  { "id": "pl-2025-09-26-souq-parisa", "date": "2025-09-26", "area": "Doha", "kind": "Meal", "title": "Souq Waqif, dinner at Parisa", "notes": "Evening" },
+
+  { "id": "pl-2025-09-27-banana", "date": "2025-09-27", "area": "Doha", "kind": "Activity", "title": "Banana Island day pass", "notes": "With dining credit" },
+  { "id": "pl-2025-09-27-light-dinner", "date": "2025-09-27", "area": "Doha", "kind": "Meal", "title": "Light dinner at hotel" },
+
+  { "id": "pl-2025-09-28-mia", "date": "2025-09-28", "area": "Doha", "kind": "Activity", "title": "Museum of Islamic Art" },
+  { "id": "pl-2025-09-28-nmot", "date": "2025-09-28", "area": "Doha", "kind": "Activity", "title": "National Museum of Qatar" },
+  { "id": "pl-2025-09-28-jiwan", "date": "2025-09-28", "area": "Doha", "kind": "Meal", "title": "Jiwan lunch" },
+  { "id": "pl-2025-09-28-nobu", "date": "2025-09-28", "area": "Doha", "kind": "Meal", "title": "Nobu Doha dinner" },
+
+  { "id": "pl-2025-09-29-departure", "date": "2025-09-29", "area": "Doha", "kind": "Activity", "title": "Early transfer to airport" },
+  { "id": "pl-2025-09-29-fly-home", "date": "2025-09-29", "area": "Doha", "kind": "Activity", "title": "Flight home" }
 ]
