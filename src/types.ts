@@ -1,14 +1,5 @@
 export type Area = 'Samui' | 'Doha'
-
-export type Spend = {
-  id: string
-  date: string // yyyy-mm-dd
-  area: Area
-  label: string
-  currency: 'GBP' | 'THB' | 'QAR'
-  amount: number
-  notes?: string
-}
+export type Currency = 'GBP' | 'THB' | 'QAR'
 
 export type Rates = {
   GBP: number
@@ -16,6 +7,16 @@ export type Rates = {
   QAR: number
   lastUpdatedISO?: string
   manualOverride?: boolean
+}
+
+export type Spend = {
+  id: string
+  date: string          // yyyy-mm-dd
+  area: Area
+  label: string
+  currency: Currency
+  amount: number
+  notes?: string
 }
 
 export type Restaurant = {
@@ -41,9 +42,9 @@ export type ChecklistItem = {
 
 export type PlanItem = {
   id: string
-  date: string // yyyy-mm-dd
+  date: string          // yyyy-mm-dd
   area: Area
-  time?: string // HH:mm
+  time?: string         // HH:mm
   kind: 'Activity' | 'Meal' | 'Note'
   title: string
   notes?: string
