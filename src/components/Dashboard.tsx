@@ -305,6 +305,19 @@ function SyncBlock() {
   const { state, setState } = useContext(AppContext)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
+
+  function resetAll() {
+    if (!confirm('Reset all TripMate data on this device, this cannot be undone.')) return
+    try {
+      // If you know your storage key, prefer:
+      // localStorage.removeItem('tripmate')
+      localStorage.clear()
+      location.reload()
+    } catch {
+      alert('Reset failed')
+    }
+  }
+
   return (
     <div className="card">
       <div className="flex items-center justify-between">
@@ -316,17 +329,30 @@ function SyncBlock() {
           {open ? 'Close' : 'Open'}
         </button>
       </div>
+
       {open && (
         <div className="mt-3 border border-gray-200 rounded-2xl p-3 space-y-2">
-          <button className="tile w-full" onClick={() => navigator.clipboard.writeText(JSON.stringify(state))}>
+          <button
+            className="tile w-full"
+            onClick={() => navigator.clipboard.writeText(JSON.stringify(state))}
+          >
             Copy data
           </button>
+
+          <button
+            className="tile w-full bg-red-50 text-red-700 hover:bg-red-100"
+            onClick={resetAll}
+          >
+            Reset all data
+          </button>
+
           <textarea
             className="w-full h-32 card"
             placeholder="Paste data here"
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
+
           <button
             className="tile w-full"
             onClick={() => {
@@ -341,6 +367,10 @@ function SyncBlock() {
           >
             Replace with pasted
           </button>
+
+          <p className="text-xs text-gray-500">
+            Tip, Reset clears local storage for this site and reloads the app with defaults.
+          </p>
         </div>
       )}
     </div>
