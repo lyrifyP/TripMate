@@ -2,17 +2,7 @@ import React, { useMemo, useState, useContext, useEffect } from 'react'
 import { AppContext } from '../App'
 import type { Area, Currency } from '../types'
 import { convert, formatGBP } from '../lib/currency'
-import {
-  Plus,
-  Trash2,
-  Wallet,
-  Coins,
-  Filter as FilterIcon,
-  Search,
-  PoundSterling,
-  Utensils,
-  Plane,
-} from 'lucide-react'
+import { Plus, Trash2, Wallet, Search, PoundSterling, Utensils, Plane } from 'lucide-react'
 
 type NewSpend = {
   date: string
@@ -24,6 +14,12 @@ type NewSpend = {
 }
 
 const TODAY = new Date().toISOString().slice(0, 10)
+
+const formatTHB = (v: number) =>
+  new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(v)
+
+const formatQAR = (v: number) =>
+  new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'QAR', maximumFractionDigits: 2 }).format(v)
 
 export default function Budget() {
   const { state, setState } = useContext(AppContext)
@@ -61,18 +57,26 @@ export default function Budget() {
 
   const totals = useMemo(() => {
     const toGBP = (amt: number, cur: Currency) => convert(amt, cur, 'GBP', state.rates)
-    let gbpAll = 0, gbpSamui = 0, gbpDoha = 0
+    const toTHB = (amt: number, cur: Currency) => convert(amt, cur, 'THB', state.rates)
+    const toQAR = (amt: number, cur: Currency) => convert(amt, cur, 'QAR', state.rates)
+
+    let allGBP = 0
+    let samuiGBP = 0, dohaGBP = 0
+    let samuiTHB = 0, dohaQAR = 0
+
     for (const s of state.spends) {
       const g = toGBP(s.amount, s.currency)
-      gbpAll += g
-      if (s.area === 'Samui') gbpSamui += g
-      if (s.area === 'Doha') gbpDoha += g
+      allGBP += g
+      if (s.area === 'Samui') {
+        samuiGBP += g
+        samuiTHB += toTHB(s.amount, s.currency)
+      }
+      if (s.area === 'Doha') {
+        dohaGBP += g
+        dohaQAR += toQAR(s.amount, s.currency)
+      }
     }
-    return {
-      all: gbpAll,
-      samui: gbpSamui,
-      doha: gbpDoha,
-    }
+    return { allGBP, samuiGBP, dohaGBP, samuiTHB, dohaQAR }
   }, [state.spends, state.rates])
 
   const rateTHB = state.rates.THB
@@ -115,9 +119,23 @@ export default function Budget() {
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-3">
-          <SummaryCard title="Overall" value={formatGBP(totals.all)} icon={<PoundSterling size={16} />} />
-          <SummaryCard title="Samui" value={formatGBP(totals.samui)} icon={<Utensils size={16} />} />
-          <SummaryCard title="Doha" value={formatGBP(totals.doha)} icon={<Plane size={16} />} />
+          <SummaryCard
+            title="Overall"
+            value={formatGBP(totals.allGBP)}
+            icon={<PoundSterling size={16} />}
+          />
+          <SummaryCard
+            title="Samui"
+            value={formatGBP(totals.samuiGBP)}
+            sub={formatTHB(totals.samuiTHB)}
+            icon={<Utensils size={16} />}
+          />
+          <SummaryCard
+            title="Doha"
+            value={formatGBP(totals.dohaGBP)}
+            sub={formatQAR(totals.dohaQAR)}
+            icon={<Plane size={16} />}
+          />
         </div>
 
         <div className="mt-3 text-xs text-white/90">
@@ -257,25 +275,29 @@ export default function Budget() {
       )}
 
       {/* List */}
-      <SpendList
-        spends={filteredSpends}
-        onRemove={removeSpend}
-        rates={{
-          THB: rateTHB,
-          QAR: rateQAR,
-        }}
-      />
+      <SpendList spends={filteredSpends} onRemove={removeSpend} />
     </div>
   )
 }
 
-function SummaryCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
+function SummaryCard({
+  title,
+  value,
+  sub,
+  icon,
+}: {
+  title: string
+  value: string
+  sub?: string
+  icon: React.ReactNode
+}) {
   return (
     <div className="rounded-2xl bg-white/15 p-3 text-white">
       <div className="text-xs opacity-80">{title}</div>
       <div className="mt-0.5 text-base font-semibold flex items-center gap-2">
         {icon} {value}
       </div>
+      {sub && <div className="text-xs opacity-90 mt-0.5">{sub}</div>}
     </div>
   )
 }
@@ -283,7 +305,6 @@ function SummaryCard({ title, value, icon }: { title: string; value: string; ico
 function SpendList({
   spends,
   onRemove,
-  rates,
 }: {
   spends: {
     id: string
@@ -295,7 +316,6 @@ function SpendList({
     notes?: string
   }[]
   onRemove: (id: string) => void
-  rates: { THB: number; QAR: number }
 }) {
   if (spends.length === 0) {
     return <div className="card p-4 text-sm text-gray-600">No spends yet. Add your first one.</div>
