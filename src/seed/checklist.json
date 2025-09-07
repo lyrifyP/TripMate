@@ -1,0 +1,30 @@
+[
+  {
+    "id": "c1",
+    "area": "Samui",
+    "type": "Food",
+    "label": "Try mango sticky rice",
+    "done": false
+  },
+  {
+    "id": "c2",
+    "area": "Samui",
+    "type": "Activity",
+    "label": "Ang Thong Marine Park tour",
+    "done": false
+  },
+  {
+    "id": "c3",
+    "area": "Doha",
+    "type": "Food",
+    "label": "Karak tea at Souq Waqif",
+    "done": false
+  },
+  {
+    "id": "c4",
+    "area": "Doha",
+    "type": "Activity",
+    "label": "Museum of Islamic Art",
+    "done": false
+  }
+]

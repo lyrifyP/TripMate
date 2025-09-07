@@ -1,0 +1,41 @@
+[
+  {
+    "id": "r1",
+    "name": "Coco Tams",
+    "area": "Samui",
+    "cuisine": "Thai",
+    "priceTier": "\u00a3\u00a3",
+    "tags": [
+      "beachfront",
+      "sunset"
+    ],
+    "googleMapsUrl": "https://maps.google.com",
+    "approxCostGBP": 40,
+    "proximity": "Bophut Fisherman Village",
+    "favourite": true
+  },
+  {
+    "id": "r2",
+    "name": "Supattra Thai Dining",
+    "area": "Samui",
+    "cuisine": "Thai",
+    "priceTier": "\u00a3\u00a3\u00a3",
+    "tags": [
+      "romantic"
+    ],
+    "googleMapsUrl": "https://maps.google.com",
+    "approxCostGBP": 70
+  },
+  {
+    "id": "r3",
+    "name": "Parisa, Persian Cuisine",
+    "area": "Doha",
+    "cuisine": "Persian",
+    "priceTier": "\u00a3\u00a3",
+    "tags": [
+      "souq waqif"
+    ],
+    "googleMapsUrl": "https://maps.google.com",
+    "approxCostGBP": 35
+  }
+]

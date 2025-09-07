@@ -1,0 +1,76 @@
+import React, { useEffect, useState, createContext } from 'react';
+import { Home as HomeIcon, DollarSign, UtensilsCrossed, CheckSquare, Calendar } from 'lucide-react';
+import { load, save } from './lib/storage';
+import { defaultRates } from './lib/currency';
+import type { AppState } from './types';
+
+import Dashboard from './components/Dashboard';
+import Budget from './components/Budget';
+import Dining from './components/Dining';
+import Checklist from './components/Checklist';
+import Planner from './components/Planner';
+
+type Tab = 'home' | 'budget' | 'dining' | 'checklist' | 'planner';
+
+const DEFAULT_STATE: AppState = {
+  startISO: '2025-09-16',
+  endISO: '2025-09-29',
+  spends: [],
+  rates: defaultRates(),
+  restaurants: (await import('./seed/restaurants.json')).default,
+  checklist: (await import('./seed/checklist.json')).default,
+  plan: (await import('./seed/plan.json')).default,
+  specialEvents: [
+    { id: 'flight-out', label: 'Flight to Samui', atISO: '2025-09-16T10:00:00Z' },
+    { id: 'flight-back', label: 'Flight home', atISO: '2025-09-29T13:00:00Z' }
+  ]
+};
+
+type Ctx = { state: AppState, setState: React.Dispatch<React.SetStateAction<AppState>>, setActiveTab: (t: Tab) => void }
+export const AppContext = createContext<Ctx>(null as any);
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [state, setState] = useState<AppState>(() => load(DEFAULT_STATE));
+  useEffect(() => save(state), [state]);
+
+  const tabs = [
+    { id: 'home' as Tab, label: 'Home', icon: HomeIcon, component: Dashboard },
+    { id: 'budget' as Tab, label: 'Budget', icon: DollarSign, component: Budget },
+    { id: 'dining' as Tab, label: 'Dining', icon: UtensilsCrossed, component: Dining },
+    { id: 'checklist' as Tab, label: 'Lists', icon: CheckSquare, component: Checklist },
+    { id: 'planner' as Tab, label: 'Plan', icon: Calendar, component: Planner },
+  ] as const;
+  const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || Dashboard;
+
+  return (
+    <AppContext.Provider value={{ state, setState, setActiveTab }}>
+      <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
+        <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
+          <div className="flex items-center justify-center">
+            <h1 className="text-xl font-bold text-gray-900">TripMate</h1>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto px-4 py-3 max-w-md w-full mx-auto">
+          <ActiveComponent />
+        </main>
+
+        <nav className="navbar">
+          <div className="max-w-md mx-auto flex justify-around">
+            {tabs.map((tab) => {
+              const Icon = tab.icon; const isActive = activeTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={`navbtn ${isActive ? 'navbtn-active' : 'navbtn-idle'}`}>
+                  <Icon size={20} className="mb-1" />
+                  <span className="text-xs font-medium">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
+    </AppContext.Provider>
+  );
+}

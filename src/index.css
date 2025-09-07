@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Utility classes for the Bolt look */
+.hero { @apply rounded-3xl bg-gradient-to-r from-sky-500 to-teal-500 text-white p-5 shadow-card; }
+.card-lg { @apply rounded-3xl bg-white p-5 shadow-card border border-white; }
+.card { @apply rounded-2xl bg-white p-4 shadow-soft border border-white; }
+.tile { @apply rounded-2xl border border-gray-200 bg-white p-4 shadow-tile hover:shadow-card transition active:scale-[0.99]; }
+.badge-icon { @apply inline-flex h-9 w-9 items-center justify-center rounded-xl; }
+.progress-track { @apply w-full h-2 rounded-full bg-white/25; }
+.progress-thumb { @apply block h-2 rounded-full bg-white/90; }
+.section-title { @apply text-xl font-semibold text-gray-900; }
+
+/* Bottom nav */
+.navbar { @apply bg-white border-t border-gray-200 px-2 py-1 fixed bottom-0 left-0 right-0; }
+.navbtn { @apply flex flex-col items-center py-2 px-3 rounded-lg transition-colors duration-200; }
+.navbtn-active { @apply bg-blue-50 text-blue-600; }
+.navbtn-idle { @apply text-gray-500 hover:text-gray-700 hover:bg-gray-50; }
