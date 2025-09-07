@@ -12,8 +12,7 @@ export function defaultRates(): Rates {
 }
 
 export async function fetchLiveRates(): Promise<Rates> {
-  // Frankfurter, free and no key, base GBP
-  const res = await fetch('https://api.frankfurter.app/latest?from=GBP&to=THB,QAR')
+  const res = await fetch('https://api.exchangerate.host/latest?base=GBP&symbols=THB,QAR')
   if (!res.ok) throw new Error('FX HTTP ' + res.status)
   const json = await res.json()
   const THB = Number(json?.rates?.THB)

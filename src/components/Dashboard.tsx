@@ -36,7 +36,7 @@ function Hero() {
   return (
     <div className="hero">
       <h2 className="text-2xl font-extrabold">Welcome to Paradise!</h2>
-      <p className="mt-1 text-white/90 text-sm">Currently in Koh Samui</p>
+      <p className="mt-1 text-white/90 text-sm">A trip to Koh Samui & Doha</p>
       <div className="mt-4">
         <div className="flex justify-between text-sm">
           <span>Trip Progress</span>

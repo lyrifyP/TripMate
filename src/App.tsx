@@ -46,8 +46,14 @@ const DEFAULT_STATE: AppState = {
   checklist: checklistTyped,
   plan: planTyped,
   specialEvents: [
-    { id: 'flight-out', label: 'Flight to Samui', atISO: '2025-09-16T10:00:00Z' },
-    { id: 'flight-back', label: 'Flight home', atISO: '2025-09-29T13:00:00Z' },
+    // Depart London, BST is UTC+01:00 in September
+    { id: 'flight-out', label: 'Flight to Samui', atISO: '2025-09-16T10:15:00+01:00' },
+  
+    // Move from Samui to Doha during the trip, Samui is UTC+07:00
+    { id: 'flight-doha', label: 'Flight to Doha', atISO: '2025-09-25T09:45:00+07:00' },
+  
+    // Fly home from Doha, Doha is UTC+03:00
+    { id: 'flight-back', label: 'Flight home', atISO: '2025-09-29T13:00:00+03:00' },
   ],
 }
 
