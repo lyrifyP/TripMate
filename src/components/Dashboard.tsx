@@ -4,24 +4,18 @@ import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
 import {
-  PoundSterling,
-  Eye,
-  Utensils,
-  ListChecks,
-  Sun,
-  Cloud,
-  CloudRain,
-  CloudSnow,
-  CloudLightning,
-  CloudFog,
-  CloudSun,
+  PoundSterling, Eye, Utensils, ListChecks,
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
+  Plane, PlaneTakeoff, PlaneLanding, CalendarClock, ChevronRight
 } from 'lucide-react'
+
 
 export default function Dashboard() {
   return (
     <div className="space-y-4">
       <Hero />
-      <QuickActions />
+      <CompactActions />       {/* replaces QuickActions */}
+      <FlightsAtGlance />      {/* new */}
       <WeatherBlock />
       <CurrencyConverter />
       <Countdowns />
@@ -29,6 +23,7 @@ export default function Dashboard() {
     </div>
   )
 }
+
 
 function Hero() {
   const { state } = useContext(AppContext)
@@ -53,29 +48,106 @@ function Hero() {
   )
 }
 
-function QuickActions() {
+function CompactActions() {
   const { setActiveTab } = useContext(AppContext)
+  const btn = 'flex flex-col items-center gap-1 rounded-2xl bg-white shadow-sm border border-gray-100 py-2 active:scale-[0.98]'
+
   return (
-    <div>
-      <h3 className="section-title">Quick Actions</h3>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <button className="tile flex items-center gap-3" onClick={() => setActiveTab('budget')}>
-          <span className="badge-icon bg-green-500/10 text-green-600"><PoundSterling size={18} /></span>
-          <span className="text-base font-medium text-gray-900">Add Spend</span>
-        </button>
-        <button className="tile flex items-center gap-3" onClick={() => setActiveTab('planner')}>
-          <span className="badge-icon bg-indigo-500/10 text-indigo-600"><Eye size={18} /></span>
-          <span className="text-base font-medium text-gray-900">Today’s Plan</span>
-        </button>
-        <button className="tile flex items-center gap-3" onClick={() => setActiveTab('dining')}>
-          <span className="badge-icon bg-orange-500/10 text-orange-600"><Utensils size={18} /></span>
-          <span className="text-base font-medium text-gray-900">Dining</span>
-        </button>
-        <button className="tile flex items-center gap-3" onClick={() => setActiveTab('checklist')}>
-          <span className="badge-icon bg-violet-500/10 text-violet-600"><ListChecks size={18} /></span>
-          <span className="text-base font-medium text-gray-900">Checklist</span>
+    <div className="grid grid-cols-4 gap-2">
+      <button className={btn} onClick={() => setActiveTab('budget')} aria-label="Add spend">
+        <span className="badge-icon bg-green-500/10 text-green-600"><PoundSterling size={18} /></span>
+        <span className="text-[11px] text-gray-800">Spend</span>
+      </button>
+      <button className={btn} onClick={() => setActiveTab('planner')} aria-label="Today plan">
+        <span className="badge-icon bg-indigo-500/10 text-indigo-600"><Eye size={18} /></span>
+        <span className="text-[11px] text-gray-800">Today</span>
+      </button>
+      <button className={btn} onClick={() => setActiveTab('dining')} aria-label="Dining">
+        <span className="badge-icon bg-orange-500/10 text-orange-600"><Utensils size={18} /></span>
+        <span className="text-[11px] text-gray-800">Dining</span>
+      </button>
+      <button className={btn} onClick={() => setActiveTab('checklist')} aria-label="Checklist">
+        <span className="badge-icon bg-violet-500/10 text-violet-600"><ListChecks size={18} /></span>
+        <span className="text-[11px] text-gray-800">Lists</span>
+      </button>
+    </div>
+  )
+}
+
+function FlightsAtGlance() {
+  const { state, setActiveTab } = useContext(AppContext)
+
+  // choose flight like items from the plan
+  const isFlightLike = (t: string) =>
+    t.startsWith('Depart') || t.startsWith('Arrive') || t.startsWith('Check in') || t.startsWith('Transfer')
+
+  const now = new Date()
+  const withWhen = state.plan
+    .filter(p => isFlightLike(p.title))
+    .map(p => {
+      const time = p.time ? p.time : '00:01'
+      const at = new Date(`${p.date}T${time}`)
+      return { ...p, at }
+    })
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+
+  const upcoming = withWhen.filter(p => p.at.getTime() >= now.getTime()).slice(0, 4)
+  const next = upcoming[0]
+
+  const iconFor = (title: string) => {
+    if (title.startsWith('Depart')) return <PlaneTakeoff size={16} className="text-sky-600" />
+    if (title.startsWith('Arrive')) return <PlaneLanding size={16} className="text-emerald-600" />
+    return <Plane size={16} className="text-gray-600" />
+  }
+
+  return (
+    <div className="card-lg">
+      <div className="flex items-center justify-between">
+        <h3 className="section-title flex items-center gap-2">
+          <CalendarClock size={16} /> Flights at a glance
+        </h3>
+        <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={() => setActiveTab('planner')}>
+          View plan
         </button>
       </div>
+
+      {next && (
+        <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
+            <span className="opacity-90">
+              {new Date(next.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+              {next.time ? `, ${next.time}` : ''}
+            </span>
+          </div>
+          <div className="mt-1 text-base font-semibold">{next.title}</div>
+        </div>
+      )}
+
+      {upcoming.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {upcoming.map(p => (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                {iconFor(p.title)}
+                <span className="truncate">{p.title}</span>
+              </div>
+              <div className="ml-2 text-gray-600 shrink-0">
+                {new Date(p.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                {p.time ? `, ${p.time}` : ''}
+              </div>
+            </div>
+          ))}
+          <button
+            className="mt-2 w-full rounded-xl bg-gray-50 border border-gray-200 py-2 text-sm flex items-center justify-center gap-2"
+            onClick={() => setActiveTab('planner')}
+          >
+            Open full itinerary <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
