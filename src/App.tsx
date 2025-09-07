@@ -48,7 +48,6 @@ const DEFAULT_STATE: AppState = {
   specialEvents: [
     // Depart London, BST is UTC+01:00 in September
     { id: 'flight-out', label: 'Flight to Samui', atISO: '2025-09-16T08:25:00+01:00' },
-  
     // Move from Samui to Doha during the trip, Samui is UTC+07:00
     { id: 'flight-doha', label: 'Flight to Doha', atISO: '2025-09-24T22:45:00+07:00' }
   ],

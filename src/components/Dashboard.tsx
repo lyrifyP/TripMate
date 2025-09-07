@@ -85,12 +85,13 @@ function WeatherBlock() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  async function fetchForecast(lat: number, lon: number) {
+  // fetch forecast for a city, force the calendar to a specific time zone
+  async function fetchForecast(lat: number, lon: number, tz = 'Europe/London') {
     const url =
       `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${lat}&longitude=${lon}` +
       `&daily=temperature_2m_min,temperature_2m_max,weathercode` +
-      `&timezone=auto&forecast_days=5`
+      `&timezone=${encodeURIComponent(tz)}&forecast_days=5`
 
     const res = await fetch(url)
     if (!res.ok) throw new Error('Weather HTTP ' + res.status)
@@ -109,9 +110,10 @@ function WeatherBlock() {
     ;(async () => {
       try {
         setLoading(true)
+        const tz = 'Europe/London' // align both cities to your today
         const [samui, doha] = await Promise.all([
-          fetchForecast(9.512, 100.013),   // Koh Samui
-          fetchForecast(25.285, 51.531),   // Doha
+          fetchForecast(9.512, 100.013, tz),  // Koh Samui
+          fetchForecast(25.285, 51.531, tz),  // Doha
         ])
         if (!cancelled) setData({ samui, doha })
       } catch {
@@ -126,10 +128,8 @@ function WeatherBlock() {
   return (
     <div className="card-lg">
       <h3 className="section-title">Weather Forecast</h3>
-
       {loading && <p className="mt-2 text-sm text-gray-600">Loading forecast…</p>}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-
       {data && !loading && !error && (
         <div className="mt-3 grid grid-cols-2 gap-3">
           <City name="Koh Samui" days={data.samui} />
@@ -142,25 +142,25 @@ function WeatherBlock() {
 
 // Map Open-Meteo weather codes to Lucide icons
 const weatherIcons: Record<number, JSX.Element> = {
-  0: <Sun className="text-yellow-500" size={18} />,           // clear
-  1: <Sun className="text-yellow-400" size={18} />,           // mainly clear
-  2: <CloudSun className="text-yellow-500" size={18} />,      // partly cloudy
-  3: <Cloud className="text-gray-500" size={18} />,           // overcast
-  45: <CloudFog className="text-gray-400" size={18} />,       // fog
+  0: <Sun className="text-yellow-500" size={18} />,
+  1: <Sun className="text-yellow-400" size={18} />,
+  2: <CloudSun className="text-yellow-500" size={18} />,
+  3: <Cloud className="text-gray-500" size={18} />,
+  45: <CloudFog className="text-gray-400" size={18} />,
   48: <CloudFog className="text-gray-400" size={18} />,
-  51: <CloudRain className="text-blue-400" size={18} />,      // drizzle
+  51: <CloudRain className="text-blue-400" size={18} />,
   53: <CloudRain className="text-blue-500" size={18} />,
   55: <CloudRain className="text-blue-600" size={18} />,
-  61: <CloudRain className="text-blue-500" size={18} />,      // rain
+  61: <CloudRain className="text-blue-500" size={18} />,
   63: <CloudRain className="text-blue-600" size={18} />,
   65: <CloudRain className="text-blue-700" size={18} />,
-  71: <CloudSnow className="text-blue-400" size={18} />,      // snow
+  71: <CloudSnow className="text-blue-400" size={18} />,
   73: <CloudSnow className="text-blue-500" size={18} />,
   75: <CloudSnow className="text-blue-600" size={18} />,
-  80: <CloudRain className="text-blue-600" size={18} />,      // showers
+  80: <CloudRain className="text-blue-600" size={18} />,
   81: <CloudRain className="text-blue-700" size={18} />,
   82: <CloudRain className="text-blue-800" size={18} />,
-  95: <CloudLightning className="text-yellow-600" size={18} />, // thunderstorm
+  95: <CloudLightning className="text-yellow-600" size={18} />,
   96: <CloudLightning className="text-yellow-700" size={18} />,
   99: <CloudLightning className="text-yellow-800" size={18} />,
 }
@@ -208,8 +208,8 @@ function CurrencyConverter() {
       setLoading(true)
       const live = await fetchLiveRates()
       setState(s => ({ ...s, rates: { ...s.rates, ...live, manualOverride: false } }))
-    } catch {
-      alert('Could not fetch live rates')
+    } catch (e: any) {
+      alert('Could not fetch live rates, ' + (e?.message ?? 'unknown error'))
     } finally {
       setLoading(false)
     }
