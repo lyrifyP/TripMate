@@ -166,7 +166,7 @@ export default function Dining() {
                 onChange={e => setFilter(f => ({ ...f, price: e.target.value as Filter['price'] }))}
                 aria-label="Filter by price"
               >
-                <option value="All">All prices</option>
+                <option value="All">All</option>
                 <option value="£">£</option>
                 <option value="££">££</option>
                 <option value="£££">£££</option>
@@ -181,7 +181,7 @@ export default function Dining() {
                 onChange={e => setFilter(f => ({ ...f, cuisine: e.target.value as Filter['cuisine'] }))}
                 aria-label="Filter by cuisine"
               >
-                <option value="All">All cuisines</option>
+                <option value="All">All</option>
                 {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
@@ -194,7 +194,7 @@ export default function Dining() {
                 onChange={e => setFilter(f => ({ ...f, tag: e.target.value as Filter['tag'] }))}
                 aria-label="Filter by tag"
               >
-                <option value="All">All tags</option>
+                <option value="All">All</option>
                 {tags.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </label>
