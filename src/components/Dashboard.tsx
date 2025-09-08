@@ -78,8 +78,9 @@ function CompactActions() {
 
 function FlightsAtGlance() {
   const { state, setActiveTab } = useContext(AppContext)
+  const [open, setOpen] = useState(false)
 
-  // choose flight like items from the plan
+  // flight or transfer like items
   const isFlightLike = (t: string) =>
     t.startsWith('Depart') || t.startsWith('Arrive') || t.startsWith('Check in') || t.startsWith('Transfer')
 
@@ -103,56 +104,125 @@ function FlightsAtGlance() {
   }
 
   return (
-    <div className="card-lg">
-      <div className="flex items-center justify-between">
-        <h3 className="section-title flex items-center gap-2">
-          <CalendarClock size={16} /> Flights at a glance
-        </h3>
-        <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={() => setActiveTab('planner')}>
-          View plan
-        </button>
+    <>
+      <div className="card-lg">
+        <div className="flex items-center justify-between">
+          <h3 className="section-title flex items-center gap-2">
+            <CalendarClock size={16} /> Flights at a glance
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+              onClick={() => setActiveTab('planner')}
+            >
+              View plan
+            </button>
+            <button
+              className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+              onClick={() => setOpen(true)}
+            >
+              Open full itinerary
+            </button>
+          </div>
+        </div>
+
+        {next && (
+          <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
+              <span className="opacity-90">
+                {new Date(next.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                {next.time ? `, ${next.time}` : ''}
+              </span>
+            </div>
+            <div className="mt-1 text-base font-semibold">{next.title}</div>
+          </div>
+        )}
+
+        {upcoming.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {upcoming.map(p => (
+              <div key={p.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  {iconFor(p.title)}
+                  <span className="truncate">{p.title}</span>
+                </div>
+                <div className="ml-2 text-gray-600 shrink-0">
+                  {new Date(p.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                  {p.time ? `, ${p.time}` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {next && (
-        <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
-            <span className="opacity-90">
-              {new Date(next.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-              {next.time ? `, ${next.time}` : ''}
-            </span>
-          </div>
-          <div className="mt-1 text-base font-semibold">{next.title}</div>
-        </div>
-      )}
-
-      {upcoming.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {upcoming.map(p => (
-            <div key={p.id} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 min-w-0">
-                {iconFor(p.title)}
-                <span className="truncate">{p.title}</span>
-              </div>
-              <div className="ml-2 text-gray-600 shrink-0">
-                {new Date(p.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-                {p.time ? `, ${p.time}` : ''}
-              </div>
+      {/* Flights only modal */}
+      {open && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[420px] bg-white rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4 overflow-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold">Flights and transfers</h3>
+              <button
+                className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+                onClick={() => setOpen(false)}
+              >
+                Close
+              </button>
             </div>
-          ))}
-          <button
-            className="mt-2 w-full rounded-xl bg-gray-50 border border-gray-200 py-2 text-sm flex items-center justify-center gap-2"
-            onClick={() => setActiveTab('planner')}
-          >
-            Open full itinerary <ChevronRight size={16} />
-          </button>
+
+            <div className="mt-3 space-y-3">
+              {groupByDate(withWhen).map(g => (
+                <div key={g.date} className="rounded-2xl border border-gray-200 p-3">
+                  <div className="text-sm font-medium mb-2">
+                    {new Date(g.date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                  <div className="space-y-2">
+                    {g.items.map(it => (
+                      <div key={it.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {iconFor(it.title)}
+                          <span className="truncate">{it.title}</span>
+                        </div>
+                        <div className="ml-2 text-gray-600 shrink-0">
+                          {it.time ? it.time : '—'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              className="mt-3 w-full rounded-xl bg-gray-50 border border-gray-200 py-2 text-sm"
+              onClick={() => { setOpen(false); setActiveTab('planner') }}
+            >
+              Open full plan
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
+
+// helper to group flight items by date
+function groupByDate<T extends { date: string }>(items: T[]) {
+  const map = new Map<string, T[]>()
+  items.forEach(i => {
+    const list = map.get(i.date) ?? []
+    list.push(i)
+    map.set(i.date, list)
+  })
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({ date, items }))
+}
+
 
 function WeatherBlock() {
   const [data, setData] = useState<WeatherData | null>(null)
