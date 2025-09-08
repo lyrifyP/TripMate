@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from 'react'
+import React, { useContext, useMemo, useState, useEffect } from 'react'
 import { AppContext } from '../App'
 import type { Area } from '../types'
 import {
@@ -13,6 +13,7 @@ type AreaFilter = 'All' | Area
 
 type Draft = {
   label: string
+  note?: string
   area: Area
   type: 'Food' | 'Activity'
 }
@@ -28,7 +29,31 @@ export default function Checklist() {
 
   // add sheet
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<Draft>({ label: '', area: 'Samui', type: 'Activity' })
+  const [draft, setDraft] = useState<Draft>({ label: '', note: '', area: 'Samui', type: 'Activity' })
+
+  // clear and undo state
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [undo, setUndo] = useState<{ visible: boolean, data: typeof state.checklist }>({ visible: false, data: [] })
+  const undoTimer = React.useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!confirmClear) return
+    const id = window.setTimeout(() => setConfirmClear(false), 4000)
+    return () => window.clearTimeout(id)
+  }, [confirmClear])
+
+  const isDefaultFilter = (f: {
+    area: AreaFilter
+    price?: unknown
+    cuisine?: unknown
+    tag?: unknown
+    favOnly?: boolean
+    q?: string
+  }) =>
+    f.area === 'All' &&
+    kind === 'All' &&
+    !showDone &&
+    (q?.trim() ?? '') === ''
 
   // derived
   const items = state.checklist
@@ -37,7 +62,9 @@ export default function Checklist() {
     .filter(i => (showDone ? true : !i.done))
     .filter(i => {
       const s = q.trim().toLowerCase()
-      return s ? i.label.toLowerCase().includes(s) : true
+      if (!s) return true
+      const hay = `${i.label} ${i.note ?? ''}`.toLowerCase()
+      return hay.includes(s)
     })
 
   const counts = useMemo(() => {
@@ -49,16 +76,18 @@ export default function Checklist() {
 
   function addItem() {
     const label = draft.label.trim()
+    const note = (draft.note ?? '').trim()
     if (!label) return
     const item = {
       id: crypto.randomUUID(),
       area: draft.area,
       type: draft.type,
       label,
+      note: note || undefined,
       done: false,
     }
     setState(s => ({ ...s, checklist: [item, ...s.checklist] }))
-    setDraft(d => ({ ...d, label: '' }))
+    setDraft(d => ({ ...d, label: '', note: '' }))
     setOpen(false)
   }
 
@@ -74,8 +103,33 @@ export default function Checklist() {
   }
 
   function clearDone() {
-    if (!confirm('Remove all completed items')) return
+    const doneItems = state.checklist.filter(i => i.done)
+    if (doneItems.length === 0) return
+
+    if (undoTimer.current) {
+      window.clearTimeout(undoTimer.current)
+      undoTimer.current = null
+    }
+    setUndo({ visible: true, data: state.checklist })
+
     setState(s => ({ ...s, checklist: s.checklist.filter(i => !i.done) }))
+
+    undoTimer.current = window.setTimeout(() => {
+      setUndo(u => ({ ...u, visible: false }))
+      undoTimer.current = null
+    }, 5000) as unknown as number
+
+    setConfirmClear(false)
+  }
+
+  function undoClear() {
+    if (!undo.visible) return
+    if (undoTimer.current) {
+      window.clearTimeout(undoTimer.current)
+      undoTimer.current = null
+    }
+    setState(s => ({ ...s, checklist: undo.data }))
+    setUndo({ visible: false, data: [] })
   }
 
   // group by Area, then Type
@@ -151,12 +205,24 @@ export default function Checklist() {
                 {v}
               </button>
             ))}
-            <button
-              className="px-3 py-1 rounded-lg text-sm bg-white/10"
-              onClick={clearDone}
-            >
-              Clear done
-            </button>
+            {confirmClear ? (
+              <button
+                className="px-3 py-1 rounded-lg text-sm bg-red-500 text-white"
+                onClick={clearDone}
+                title="Remove all completed items"
+              >
+                Confirm clear ({counts.done})
+              </button>
+            ) : (
+              <button
+                className="px-3 py-1 rounded-lg text-sm bg-white/10 disabled:opacity-40"
+                onClick={() => setConfirmClear(true)}
+                disabled={counts.done === 0}
+                title={counts.done === 0 ? 'No completed items' : 'Prepare to clear completed items'}
+              >
+                Clear done
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -188,21 +254,27 @@ export default function Checklist() {
               value={draft.label}
               onChange={(e) => setDraft(d => ({ ...d, label: e.target.value }))}
             />
+            <input
+              className="card col-span-2"
+              placeholder="Optional note, for example evening fire shows"
+              value={draft.note ?? ''}
+              onChange={(e) => setDraft(d => ({ ...d, note: e.target.value }))}
+            />
           </div>
 
           {/* quick presets */}
           <div className="flex flex-wrap gap-2">
             {[
-              { label: 'Night market', area: 'Samui' as Area, type: 'Food' as const },
-              { label: 'Sunset drinks', area: 'Samui' as Area, type: 'Activity' as const },
-              { label: 'Massage', area: 'Samui' as Area, type: 'Activity' as const },
-              { label: 'Msheireb evening', area: 'Doha' as Area, type: 'Activity' as const },
-              { label: 'Souq dinner', area: 'Doha' as Area, type: 'Food' as const },
+              { label: 'Night market', note: 'Street food and stalls', area: 'Samui' as Area, type: 'Food' as const },
+              { label: 'Sunset drinks', note: 'Beachfront if possible', area: 'Samui' as Area, type: 'Activity' as const },
+              { label: 'Massage', note: '60 to 90 mins', area: 'Samui' as Area, type: 'Activity' as const },
+              { label: 'Msheireb evening', note: 'Walk and photo spots', area: 'Doha' as Area, type: 'Activity' as const },
+              { label: 'Souq dinner', note: 'Parisa or Turkey Central', area: 'Doha' as Area, type: 'Food' as const },
             ].map(p => (
               <button
                 key={p.label}
                 className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
-                onClick={() => setDraft({ label: p.label, area: p.area, type: p.type })}
+                onClick={() => setDraft({ label: p.label, note: p.note, area: p.area, type: p.type })}
               >
                 {p.label}
               </button>
@@ -241,12 +313,35 @@ export default function Checklist() {
                 </div>
                 <div className="divide-y divide-gray-100">
                   {rows.map(i => (
-                    <Row key={i.id} id={i.id} label={i.label} done={i.done} onToggle={toggle} onRemove={remove} />
+                    <Row
+                      key={i.id}
+                      id={i.id}
+                      label={i.label}
+                      note={i.note}
+                      done={i.done}
+                      onToggle={toggle}
+                      onRemove={remove}
+                    />
                   ))}
                 </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Undo toast */}
+      {undo.visible && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-20 z-50">
+          <div className="rounded-2xl bg-gray-900 text-white px-4 py-2 text-sm shadow-lg flex items-center gap-3">
+            <span>Completed items cleared</span>
+            <button
+              className="rounded-lg bg-white/10 px-2 py-1 text-xs"
+              onClick={undoClear}
+            >
+              Undo
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -265,27 +360,36 @@ function Chip({ label, value }: { label: string, value: number }) {
 function Row({
   id,
   label,
+  note,
   done,
   onToggle,
   onRemove,
 }: {
   id: string
   label: string
+  note?: string
   done: boolean
   onToggle: (id: string) => void
   onRemove: (id: string) => void
 }) {
   return (
     <div className="py-2 flex items-center justify-between gap-3">
-      <label className="flex items-center gap-3 cursor-pointer select-none">
+      <label className="flex items-start gap-3 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={done}
           onChange={() => onToggle(id)}
-          className="h-5 w-5 rounded border-gray-300"
+          className="mt-0.5 h-5 w-5 rounded border-gray-300"
         />
-        <span className={'text-sm ' + (done ? 'line-through text-gray-500' : 'text-gray-900')}>
-          {label}
+        <span className="flex flex-col">
+          <span className={'text-sm ' + (done ? 'line-through text-gray-500' : 'text-gray-900')}>
+            {label}
+          </span>
+          {note ? (
+            <span className="text-xs text-gray-600">
+              {note}
+            </span>
+          ) : null}
         </span>
       </label>
       <button

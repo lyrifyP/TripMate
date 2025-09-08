@@ -37,8 +37,10 @@ export type ChecklistItem = {
   area: Area
   type: 'Food' | 'Activity'
   label: string
+  note?: string
   done: boolean
 }
+
 
 export type PlanItem = {
   id: string
