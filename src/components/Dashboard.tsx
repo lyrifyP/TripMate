@@ -8,7 +8,11 @@ import {
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
   Plane, PlaneTakeoff, PlaneLanding, CalendarClock, ChevronRight, ArrowLeftRight,
   RefreshCw,
-  Info, Shield
+  Info, Luggage,
+  Plug,
+  SunMedium,
+  Droplets,
+  Shield,
 } from 'lucide-react'
 
 
@@ -21,6 +25,7 @@ export default function Dashboard() {
       <WeatherBlock />
       <CurrencyConverter />
       <Countdowns />
+      <HolidayEssentials />
       <SyncBlock />
     </div>
   )
@@ -532,6 +537,152 @@ function CountdownRow({ label, atISO }: { label: string; atISO: string }) {
     </div>
   )
 }
+
+function HolidayEssentials() {
+  // simple persistent store for this card only
+  const STORAGE_KEY = 'tripmate.essentials.v1'
+  type Bucket = 'Essentials' | 'Samui' | 'Doha'
+  type Item = { id: string; label: string; bucket: Bucket; done: boolean }
+
+  const defaults: Item[] = [
+    // Essentials
+    { id: 'passport', label: 'Passport and copies', bucket: 'Essentials', done: false },
+    { id: 'insurance', label: 'Travel insurance details', bucket: 'Essentials', done: false },
+    { id: 'cards', label: 'Bank cards and travel card', bucket: 'Essentials', done: false },
+    { id: 'meds', label: 'Medication and basic first aid', bucket: 'Essentials', done: false },
+    { id: 'adapters', label: 'Plug adapters and chargers', bucket: 'Essentials', done: false },
+    { id: 'sun', label: 'Sunscreen and after sun', bucket: 'Essentials', done: false },
+
+    // Samui
+    { id: 'samui-swim', label: 'Swimwear and cover ups', bucket: 'Samui', done: false },
+    { id: 'samui-repel', label: 'Mosquito repellent', bucket: 'Samui', done: false },
+    { id: 'samui-water', label: 'Reusable water bottle', bucket: 'Samui', done: false },
+    { id: 'samui-cash', label: 'Some cash for markets', bucket: 'Samui', done: false },
+
+    // Doha
+    { id: 'doha-light', label: 'Light modest outfits for malls and museums', bucket: 'Doha', done: false },
+    { id: 'doha-scarf', label: 'Scarf or light shawl', bucket: 'Doha', done: false },
+    { id: 'doha-sun', label: 'Cap or sun hat', bucket: 'Doha', done: false },
+    { id: 'doha-ride', label: 'Ride hailing app set up', bucket: 'Doha', done: false },
+  ]
+
+  function load(): Item[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return defaults
+      const parsed = JSON.parse(raw) as Item[]
+      // merge in any new defaults that did not exist yet
+      const existing = new Map(parsed.map(i => [i.id, i]))
+      for (const d of defaults) if (!existing.has(d.id)) existing.set(d.id, d)
+      return Array.from(existing.values())
+    } catch {
+      return defaults
+    }
+  }
+  function save(items: Item[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  }
+
+  const [bucket, setBucket] = React.useState<Bucket | 'All'>('All')
+  const [items, setItems] = React.useState<Item[]>(() => load())
+
+  function setAndSave(updater: (prev: Item[]) => Item[]) {
+    setItems(prev => {
+      const next = updater(prev)
+      save(next)
+      return next
+    })
+  }
+
+  const filtered = items.filter(i => (bucket === 'All' ? true : i.bucket === bucket))
+  const doneCount = items.filter(i => i.done).length
+
+  function toggle(id: string) {
+    setAndSave(prev => prev.map(i => (i.id === id ? { ...i, done: !i.done } : i)))
+  }
+
+  function resetAll() {
+    if (!confirm('Untick all essentials')) return
+    setAndSave(prev => prev.map(i => ({ ...i, done: false })))
+  }
+
+  const bucketChip = (val: Bucket | 'All', label: string) => (
+    <button
+      key={val}
+      className={'px-3 py-1 rounded-lg text-sm ' + (bucket === val ? 'bg-white/20 text-white' : 'bg-white/10 text-white/90')}
+      onClick={() => setBucket(val)}
+    >
+      {label}
+    </button>
+  )
+
+  return (
+    <div className="card-lg">
+      <div className="flex items-center justify-between">
+        <h3 className="section-title flex items-center gap-2">
+          <Luggage size={16} /> Holiday essentials
+        </h3>
+        <button
+          className="rounded-xl bg-gray-100 px-3 py-1 text-sm disabled:opacity-40"
+          onClick={resetAll}
+          disabled={doneCount === 0}
+          title={doneCount ? `Untick ${doneCount} completed` : 'Nothing completed yet'}
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* quick legend, subtle and compact */}
+      <div className="mt-2 text-xs text-gray-500 flex items-center gap-3 flex-wrap">
+        <span className="inline-flex items-center gap-1">
+          <Shield size={14} /> Essentials
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <SunMedium size={14} /> Samui
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Droplets size={14} /> Doha
+        </span>
+      </div>
+
+      {/* filters */}
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        {bucketChip('All', 'All')}
+        {bucketChip('Essentials', 'Essentials')}
+        {bucketChip('Samui', 'Samui')}
+        {bucketChip('Doha', 'Doha')}
+      </div>
+
+      {/* list */}
+      <div className="mt-3 space-y-2">
+        {filtered.map(i => (
+          <label key={i.id} className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 p-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <input
+                type="checkbox"
+                checked={i.done}
+                onChange={() => toggle(i.id)}
+                className="h-5 w-5 rounded border-gray-300"
+              />
+              <span className={'text-sm truncate ' + (i.done ? 'line-through text-gray-500' : 'text-gray-900')}>
+                {i.label}
+              </span>
+            </div>
+            <span className="text-[11px] text-gray-500 shrink-0 px-2 py-0.5 rounded-full bg-gray-50">
+              {i.bucket}
+            </span>
+          </label>
+        ))}
+        {filtered.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-gray-200 p-3 text-sm text-gray-600">
+            Nothing here for this bucket
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 
 function SyncBlock() {
   const { state, setState } = useContext(AppContext)
