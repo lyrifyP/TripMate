@@ -128,14 +128,18 @@ export default function App() {
     return () => { cancelled = true }
   }, [tripId])
 
-  // 2) Subscribe to remote changes for this trip and adopt them
-  useEffect(() => {
-    if (!CLOUD_SYNC) return
-    const unsubscribe = subscribeState({ tripId }, (next) => {
-      setState(next)
-    })
-    return () => unsubscribe()
-  }, [tripId])
+// 2) Subscribe to remote changes for this trip and adopt them
+useEffect(() => {
+  if (!CLOUD_SYNC) return;
+
+  const unsubscribe = subscribeState({ tripId }, (next) => {
+    setState(next);
+  });
+
+  return () => {
+    unsubscribe();
+  };
+}, [tripId]);
 
   // 3) Debounced push to cloud whenever local state changes
   const debouncedCloudSave = useMemo(
