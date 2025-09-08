@@ -3,7 +3,7 @@ import { Home as HomeIcon, DollarSign, UtensilsCrossed, CheckSquare, Calendar } 
 import { load, save } from './lib/storage'
 import { defaultRates, fetchLiveRates } from './lib/currency'
 import type { AppState, Restaurant, ChecklistItem, PlanItem } from './types'
-
+import TripMateLogo from './components/TripMateLogo'
 import Dashboard from './components/Dashboard'
 import Budget from './components/Budget'
 import Dining from './components/Dining'
@@ -96,11 +96,11 @@ export default function App() {
   return (
     <AppContext.Provider value={{ state, setState, setActiveTab }}>
       <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
-        <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
-          <div className="flex items-center justify-center">
-            <h1 className="text-xl font-bold text-gray-900">TripMate</h1>
-          </div>
-        </header>
+      <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
+  <div className="flex items-center justify-center">
+    <TripMateLogo size={20} />
+  </div>
+</header>
 
         <main className="flex-1 overflow-auto px-4 py-3 max-w-md w-full mx-auto">
           <ActiveComponent />

@@ -4,14 +4,12 @@ import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
 import {
-  // sections
   CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
-  // weather icons
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
-  // currency
+  Sun, SunMedium, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
   RefreshCw, ArrowLeftRight, Shield, Info,
-  // essentials
-  Luggage, SunMedium, Droplets,
+  Luggage, Droplets,
+  PoundSterling, Eye, Utensils, ListChecks,
+  Moon
 } from 'lucide-react'
 
 /* =========================================================
