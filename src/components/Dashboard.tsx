@@ -1,39 +1,107 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppContext } from '../App'
 import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
 import {
-  PoundSterling, Eye, Utensils, ListChecks,
+  // sections
+  CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
+  // weather icons
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
-  Plane, PlaneTakeoff, PlaneLanding, CalendarClock, ChevronRight, ArrowLeftRight,
-  RefreshCw,
-  Info, Luggage,
-  Plug,
-  SunMedium,
-  Droplets,
-  Shield,
-  MapPin, Navigation
+  // currency
+  RefreshCw, ArrowLeftRight, Shield, Info,
+  // essentials
+  Luggage, SunMedium, Droplets,
 } from 'lucide-react'
 
-
+/* =========================================================
+   Dashboard (home)
+   ========================================================= */
 export default function Dashboard() {
   return (
     <div className="space-y-4">
       <Hero />
-      <CompactActions />       {/* replaces QuickActions */}
-      <FlightsAtGlance />      {/* new */}
-      <WeatherBlock />
-      <CurrencyConverter />
-      <Countdowns />
-      <HolidayEssentials />
-      <StepsBlock />
-       <SyncBlock />
+
+      <CollapsibleCard title="Flights at a glance" storageKey="home.flights" defaultOpen>
+        <FlightsAtGlance />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Weather forecast" storageKey="home.weather" defaultOpen>
+        <WeatherBlock />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Currency" storageKey="home.currency" defaultOpen>
+        <CurrencyConverter />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Countdowns" storageKey="home.countdowns">
+        <Countdowns />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Steps this week" storageKey="home.steps">
+        <StepsBlock />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Holiday essentials" storageKey="home.essentials">
+        <HolidayEssentials />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Sync" storageKey="home.sync">
+        <SyncBlock />
+      </CollapsibleCard>
     </div>
   )
 }
 
+/* =========================================================
+   Collapsible section wrapper (persists open state)
+   ========================================================= */
+function CollapsibleCard({
+  title,
+  children,
+  storageKey,
+  defaultOpen = true,
+}: {
+  title: string
+  children: React.ReactNode
+  storageKey: string
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(`tripmate.card.${storageKey}`)
+      return raw == null ? defaultOpen : JSON.parse(raw)
+    } catch {
+      return defaultOpen
+    }
+  })
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(`tripmate.card.${storageKey}`, JSON.stringify(open))
+    } catch { /* ignore */ }
+  }, [open, storageKey])
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h3 className="section-title">{title}</h3>
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+          aria-expanded={open}
+        >
+          {open ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {open && <div className="mt-3">{children}</div>}
+    </div>
+  )
+}
+
+/* =========================================================
+   Hero
+   ========================================================= */
 function Hero() {
   const { state } = useContext(AppContext)
   const pct = betweenPercent(state.startISO, state.endISO, new Date())
@@ -57,36 +125,14 @@ function Hero() {
   )
 }
 
-function CompactActions() {
-  const { setActiveTab } = useContext(AppContext)
-  const btn = 'flex flex-col items-center gap-1 rounded-2xl bg-white shadow-sm border border-gray-100 py-2 active:scale-[0.98]'
-
-  return (
-    <div className="grid grid-cols-4 gap-2">
-      <button className={btn} onClick={() => setActiveTab('budget')} aria-label="Add spend">
-        <span className="badge-icon bg-green-500/10 text-green-600"><PoundSterling size={18} /></span>
-        <span className="text-[11px] text-gray-800">Spend</span>
-      </button>
-      <button className={btn} onClick={() => setActiveTab('planner')} aria-label="Today plan">
-        <span className="badge-icon bg-indigo-500/10 text-indigo-600"><Eye size={18} /></span>
-        <span className="text-[11px] text-gray-800">Today</span>
-      </button>
-      <button className={btn} onClick={() => setActiveTab('dining')} aria-label="Dining">
-        <span className="badge-icon bg-orange-500/10 text-orange-600"><Utensils size={18} /></span>
-        <span className="text-[11px] text-gray-800">Dining</span>
-      </button>
-      <button className={btn} onClick={() => setActiveTab('checklist')} aria-label="Checklist">
-        <span className="badge-icon bg-violet-500/10 text-violet-600"><ListChecks size={18} /></span>
-        <span className="text-[11px] text-gray-800">Lists</span>
-      </button>
-    </div>
-  )
-}
-
+/* =========================================================
+   Flights at a glance (+ “flights only” modal)
+   ========================================================= */
 function FlightsAtGlance() {
   const { state, setActiveTab } = useContext(AppContext)
   const [open, setOpen] = useState(false)
 
+  // choose flight-like items from the plan
   const isFlightLike = (t: string) =>
     t.startsWith('Depart') || t.startsWith('Arrive') || t.startsWith('Check in') || t.startsWith('Transfer')
 
@@ -94,7 +140,7 @@ function FlightsAtGlance() {
   const withWhen = state.plan
     .filter(p => isFlightLike(p.title))
     .map(p => {
-      const time = p.time ? p.time : '00:01'
+      const time = p.time ? p.time : '00:01' // put undated items just after midnight
       const at = new Date(`${p.date}T${time}`)
       return { ...p, at }
     })
@@ -111,71 +157,69 @@ function FlightsAtGlance() {
 
   return (
     <>
-      <div className="card-lg">
-        {/* compact header */}
-        <div className="flex items-center justify-between">
-          <h3 className="section-title flex items-center gap-2">
-            <CalendarClock size={16} /> Flights at a glance
-          </h3>
-          <div className="flex items-center gap-1">
-            <button
-              className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
-              onClick={() => setActiveTab('planner')}
-              title="Open full plan"
-            >
-              Plan
-            </button>
-            <button
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
-              onClick={() => setOpen(true)}
-              title="Flights only"
-              aria-label="Flights only"
-            >
-              <Plane className="w-4 h-4" />
-            </button>
-          </div>
+      {/* header actions kept minimal; “Plan” opens Planner, ✈ opens modal */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <CalendarClock size={16} /> <span className="font-medium">Flights at a glance</span>
         </div>
+        <div className="flex items-center gap-1">
+          <button
+            className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+            onClick={() => setActiveTab('planner')}
+            title="Open full plan"
+          >
+            Plan
+          </button>
+          <button
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
+            onClick={() => setOpen(true)}
+            title="Flights only"
+            aria-label="Flights only"
+          >
+            <Plane className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
-        {next && (
-          <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
-              <span className="opacity-90">
-                {new Date(next.date).toLocaleDateString(undefined, {
+      {next && (
+        <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
+            <span className="opacity-90">
+              {new Date(next.date).toLocaleDateString(undefined, {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              })}
+              {next.time ? `, ${next.time}` : ''}
+            </span>
+          </div>
+          <div className="mt-1 text-base font-semibold">{next.title}</div>
+        </div>
+      )}
+
+      {upcoming.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {upcoming.map(p => (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                {iconFor(p.title)}
+                <span className="truncate">{p.title}</span>
+              </div>
+              <div className="ml-2 text-gray-600 shrink-0">
+                {new Date(p.date).toLocaleDateString(undefined, {
                   weekday: 'short',
                   day: 'numeric',
                   month: 'short',
                 })}
-                {next.time ? `, ${next.time}` : ''}
-              </span>
-            </div>
-            <div className="mt-1 text-base font-semibold">{next.title}</div>
-          </div>
-        )}
-
-        {upcoming.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {upcoming.map(p => (
-              <div key={p.id} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  {iconFor(p.title)}
-                  <span className="truncate">{p.title}</span>
-                </div>
-                <div className="ml-2 text-gray-600 shrink-0">
-                  {new Date(p.date).toLocaleDateString(undefined, {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                  })}
-                  {p.time ? `, ${p.time}` : ''}
-                </div>
+                {p.time ? `, ${p.time}` : ''}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* flights only modal */}
       {open && (
@@ -233,12 +277,14 @@ function groupByDate<T extends { date: string }>(items: T[]) {
     .map(([date, items]) => ({ date, items }))
 }
 
+/* =========================================================
+   Weather
+   ========================================================= */
 function WeatherBlock() {
   const [data, setData] = useState<WeatherData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // fetch forecast for a city, force the calendar to a specific time zone
   async function fetchForecast(lat: number, lon: number, tz = 'Europe/London') {
     const url =
       `https://api.open-meteo.com/v1/forecast` +
@@ -263,7 +309,7 @@ function WeatherBlock() {
     ;(async () => {
       try {
         setLoading(true)
-        const tz = 'Europe/London' // align both cities to your today
+        const tz = 'Europe/London' // align both cities to your "today"
         const [samui, doha] = await Promise.all([
           fetchForecast(9.512, 100.013, tz),  // Koh Samui
           fetchForecast(25.285, 51.531, tz),  // Doha
@@ -279,21 +325,19 @@ function WeatherBlock() {
   }, [])
 
   return (
-    <div className="card-lg">
-      <h3 className="section-title">Weather Forecast</h3>
-      {loading && <p className="mt-2 text-sm text-gray-600">Loading forecast…</p>}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    <>
+      {loading && <p className="text-sm text-gray-600">Loading forecast…</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
       {data && !loading && !error && (
-        <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <City name="Koh Samui" days={data.samui} />
           <City name="Doha" days={data.doha} />
         </div>
       )}
-    </div>
+    </>
   )
 }
 
-// Map Open-Meteo weather codes to Lucide icons
 const weatherIcons: Record<number, JSX.Element> = {
   0: <Sun className="text-yellow-500" size={18} />,
   1: <Sun className="text-yellow-400" size={18} />,
@@ -345,6 +389,9 @@ function City({
   )
 }
 
+/* =========================================================
+   Currency (compact, refreshed, centered chips)
+   ========================================================= */
 function CurrencyConverter() {
   const { state, setState } = useContext(AppContext)
   const [amount, setAmount] = useState(100)
@@ -381,12 +428,11 @@ function CurrencyConverter() {
     (active ? 'bg-sky-100 text-sky-800 border border-sky-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
-      {/* compact header */}
+    <>
+      {/* toolbar */}
       <div className="flex items-center justify-between">
-      <h3 className="section-title">Currency</h3>
+        <h4 className="text-sm font-medium text-gray-900">Converter</h4>
         <div className="flex items-center gap-2">
-          {/* icon only refresh */}
           <button
             onClick={refreshRates}
             className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 disabled:opacity-60"
@@ -396,7 +442,6 @@ function CurrencyConverter() {
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
-          {/* tiny override pill */}
           <button
             onClick={() =>
               setState(s => ({
@@ -418,7 +463,7 @@ function CurrencyConverter() {
         </div>
       </div>
 
-      {/* inputs, selects in headers for space */}
+      {/* inputs */}
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
         <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
           <div className="flex items-center justify-between">
@@ -483,26 +528,27 @@ function CurrencyConverter() {
         </div>
       </div>
 
-      {/* rate line */}
-  <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
-    <div className="flex items-center gap-1">
-      <Info size={12} className="opacity-60" />
-      <span>
-        1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}
-      </span>
-    </div>
-    <span>
-      {state.rates.lastUpdatedISO
-        ? new Date(state.rates.lastUpdatedISO).toLocaleTimeString()
-        : 'no update yet'}
-    </span>
-  </div>
-  </div>
+      {/* subtle rate line */}
+      <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <Info size={12} className="opacity-60" />
+          <span>
+            1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}
+          </span>
+        </div>
+        <span>
+          {state.rates.lastUpdatedISO
+            ? new Date(state.rates.lastUpdatedISO).toLocaleTimeString()
+            : 'no update yet'}
+        </span>
+      </div>
+    </>
   )
 }
 
-
-
+/* =========================================================
+   Countdowns
+   ========================================================= */
 function Countdowns() {
   const { state } = useContext(AppContext)
   const [, setTick] = useState(0)
@@ -511,8 +557,7 @@ function Countdowns() {
     return () => clearInterval(id)
   }, [])
   return (
-    <div className="card-lg space-y-2">
-      <h3 className="section-title">Countdowns</h3>
+    <div className="space-y-2">
       {state.specialEvents.map(ev => (
         <CountdownRow key={ev.id} label={ev.label} atISO={ev.atISO} />
       ))}
@@ -540,8 +585,10 @@ function CountdownRow({ label, atISO }: { label: string; atISO: string }) {
   )
 }
 
+/* =========================================================
+   Holiday Essentials (local, lightweight store)
+   ========================================================= */
 function HolidayEssentials() {
-  // simple persistent store for this card only
   const STORAGE_KEY = 'tripmate.essentials.v1'
   type Bucket = 'Essentials' | 'Samui' | 'Doha'
   type Item = { id: string; label: string; bucket: Bucket; done: boolean }
@@ -573,7 +620,6 @@ function HolidayEssentials() {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return defaults
       const parsed = JSON.parse(raw) as Item[]
-      // merge in any new defaults that did not exist yet
       const existing = new Map(parsed.map(i => [i.id, i]))
       for (const d of defaults) if (!existing.has(d.id)) existing.set(d.id, d)
       return Array.from(existing.values())
@@ -611,7 +657,7 @@ function HolidayEssentials() {
   const bucketChip = (val: Bucket | 'All', label: string) => (
     <button
       key={val}
-      className={'px-3 py-1 rounded-lg text-sm ' + (bucket === val ? 'bg-white/20 text-white' : 'bg-white/10 text-white/90')}
+      className={'px-3 py-1 rounded-lg text-sm ' + (bucket === val ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-800')}
       onClick={() => setBucket(val)}
     >
       {label}
@@ -619,11 +665,11 @@ function HolidayEssentials() {
   )
 
   return (
-    <div className="card-lg">
+    <>
       <div className="flex items-center justify-between">
-        <h3 className="section-title flex items-center gap-2">
-          <Luggage size={16} /> Holiday essentials
-        </h3>
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <Luggage size={16} /> <span className="font-medium">Holiday essentials</span>
+        </div>
         <button
           className="rounded-xl bg-gray-100 px-3 py-1 text-sm disabled:opacity-40"
           onClick={resetAll}
@@ -634,7 +680,7 @@ function HolidayEssentials() {
         </button>
       </div>
 
-      {/* quick legend, subtle and compact */}
+      {/* legend */}
       <div className="mt-2 text-xs text-gray-500 flex items-center gap-3 flex-wrap">
         <span className="inline-flex items-center gap-1">
           <Shield size={14} /> Essentials
@@ -681,21 +727,23 @@ function HolidayEssentials() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }
 
-
+/* =========================================================
+   Steps (weekly chart + today entry + trip totals)
+   ========================================================= */
 function StepsBlock() {
   const { state, setState } = useContext(AppContext)
   const [input, setInput] = useState('')
-  // average adult stride, meters per step, tweakable in UI
+  // average adult stride (m/step), tweakable
   const [strideM, setStrideM] = useState(0.78)
 
   const today = new Date().toISOString().slice(0, 10) // yyyy-mm-dd
-  const todaySteps = state.steps?.[today] ?? 0
+  const todaySteps = (state as any).steps?.[today] ?? 0
 
-  // Build last 7 dates (oldest -> newest, today last)
+  // last 7 days (oldest -> newest)
   const days = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (6 - i))
@@ -703,11 +751,11 @@ function StepsBlock() {
     return {
       key,
       label: d.toLocaleDateString(undefined, { weekday: 'short' }),
-      value: state.steps?.[key] ?? 0,
+      value: (state as any).steps?.[key] ?? 0,
     }
   })
 
-  // Scale to at least 25k so tall days do not clip
+  // keep scale sensible up to 25k so tall days don’t clip
   const max = Math.max(25000, ...days.map(d => d.value))
   const W = 280
   const H = 120
@@ -717,7 +765,7 @@ function StepsBlock() {
   function saveSteps() {
     const n = parseInt(input, 10)
     if (!isNaN(n) && n >= 0) {
-      setState(s => ({
+      setState((s: any) => ({
         ...s,
         steps: { ...(s.steps ?? {}), [today]: n },
       }))
@@ -726,16 +774,15 @@ function StepsBlock() {
   }
 
   // Running total across the holiday window
-  const start = new Date(state.startISO)
-  const end = new Date(state.endISO)
-  // include end date
+  const start = new Date((state as any).startISO)
+  const end = new Date((state as any).endISO)
   end.setHours(23, 59, 59, 999)
 
   let totalStepsTrip = 0
-  if (state.steps) {
-    for (const [k, v] of Object.entries(state.steps)) {
+  if ((state as any).steps) {
+    for (const [k, v] of Object.entries((state as any).steps)) {
       const d = new Date(k)
-      if (d >= start && d <= end) totalStepsTrip += v
+      if (d >= start && d <= end) totalStepsTrip += v as number
     }
   }
 
@@ -743,14 +790,9 @@ function StepsBlock() {
   const miles = km * 0.621371
 
   return (
-    <div className="card-lg">
-      <div className="flex items-center justify-between">
-        <h3 className="section-title">Steps this week</h3>
-        <span className="text-xs text-gray-600">goal 10k/day</span>
-      </div>
-
-      {/* Chart */}
-      <div className="mt-2">
+    <>
+      {/* chart */}
+      <div>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[140px]">
           <defs>
             <pattern id="sgrid" width="28" height="28" patternUnits="userSpaceOnUse">
@@ -758,7 +800,6 @@ function StepsBlock() {
             </pattern>
           </defs>
           <rect x="0" y="0" width={W} height={H} fill="url(#sgrid)" />
-
           {days.map((d, i) => {
             const h = Math.max(2, Math.round((d.value / max) * (H - 28)))
             const x = i * barW + pad
@@ -800,7 +841,7 @@ function StepsBlock() {
         </svg>
       </div>
 
-      {/* Today input, compact */}
+      {/* today input */}
       <div className="mt-3 flex gap-2 items-center">
         <input
           className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm"
@@ -814,7 +855,7 @@ function StepsBlock() {
         <button className="tile" onClick={saveSteps}>Save</button>
       </div>
 
-      {/* Trip totals and distance */}
+      {/* trip totals */}
       <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
         <div className="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
           <div className="text-xs text-gray-500">Trip steps</div>
@@ -830,7 +871,7 @@ function StepsBlock() {
         </div>
       </div>
 
-      {/* Stride control, subtle */}
+      {/* stride control */}
       <div className="mt-2 flex items-center justify-end gap-2 text-xs text-gray-500">
         <label htmlFor="stride" className="whitespace-nowrap">Stride m/step</label>
         <input
@@ -845,11 +886,13 @@ function StepsBlock() {
           title="Meters per step used for distance"
         />
       </div>
-    </div>
+    </>
   )
 }
 
-
+/* =========================================================
+   Sync (copy/paste + reset)
+   ========================================================= */
 function SyncBlock() {
   const { state, setState } = useContext(AppContext)
   const [open, setOpen] = useState(false)
@@ -858,8 +901,7 @@ function SyncBlock() {
   function resetAll() {
     if (!confirm('Reset all TripMate data on this device, this cannot be undone.')) return
     try {
-      // If you know your storage key, prefer:
-      // localStorage.removeItem('tripmate')
+      // If you know your storage key, prefer removing just that key.
       localStorage.clear()
       location.reload()
     } catch {
@@ -871,7 +913,7 @@ function SyncBlock() {
     <div className="card">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold">Sync</h3>
+          <h4 className="font-semibold">Sync</h4>
           <p className="text-sm text-gray-600">Share or paste trip data between two devices</p>
         </div>
         <button className="rounded-xl bg-gray-100 px-3 py-1" onClick={() => setOpen(v => !v)}>
@@ -908,17 +950,18 @@ function SyncBlock() {
               try {
                 const parsed = JSON.parse(text)
                 setState(parsed)
-                setOpen(false)
               } catch {
                 alert('Invalid JSON')
+                return
               }
+              setOpen(false)
             }}
           >
             Replace with pasted
           </button>
 
           <p className="text-xs text-gray-500">
-            Tip, Reset clears local storage for this site and reloads the app with defaults.
+            Tip: Reset clears local storage for this site and reloads the app with defaults.
           </p>
         </div>
       )}
