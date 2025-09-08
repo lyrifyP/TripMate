@@ -8,7 +8,7 @@ import {
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
   Plane, PlaneTakeoff, PlaneLanding, CalendarClock, ChevronRight, ArrowLeftRight,
   RefreshCw,
-  Info
+  Info, Shield
 } from 'lucide-react'
 
 
@@ -375,19 +375,21 @@ function CurrencyConverter() {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
-      {/* Header */}
+      {/* compact header */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-900">Currency converter</h3>
         <div className="flex items-center gap-2">
+          {/* icon only refresh */}
           <button
             onClick={refreshRates}
-            className="rounded-xl bg-gray-100 px-3 py-1 text-sm text-gray-800 hover:bg-gray-200 disabled:opacity-60 inline-flex items-center gap-2"
+            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 disabled:opacity-60"
             disabled={loading}
-            title="Fetch live rates"
+            aria-label="Refresh rates"
+            title="Refresh rates"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Refreshing' : 'Refresh'}
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
+          {/* tiny override pill */}
           <button
             onClick={() =>
               setState(s => ({
@@ -396,21 +398,21 @@ function CurrencyConverter() {
               }))
             }
             className={
-              'rounded-full px-2.5 py-1 text-xs border ' +
+              'px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1 ' +
               (state.rates.manualOverride
                 ? 'bg-amber-50 text-amber-800 border-amber-200'
                 : 'bg-white text-gray-600 border-gray-200')
             }
             title="Toggle manual override"
           >
+            <Shield size={12} />
             {state.rates.manualOverride ? 'Override on' : 'Override off'}
           </button>
         </div>
       </div>
 
-      {/* Inputs, selects in headers so the number field gets full width */}
+      {/* inputs, selects in headers for space */}
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
-        {/* FROM card */}
         <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
           <div className="flex items-center justify-between">
             <label className="text-xs text-gray-600">From</label>
@@ -419,9 +421,7 @@ function CurrencyConverter() {
               value={from}
               onChange={e => setFrom(e.target.value as Currency)}
             >
-              <option>GBP</option>
-              <option>THB</option>
-              <option>QAR</option>
+              <option>GBP</option><option>THB</option><option>QAR</option>
             </select>
           </div>
           <input
@@ -434,7 +434,6 @@ function CurrencyConverter() {
           />
         </div>
 
-        {/* swap */}
         <button
           className="self-center rounded-2xl bg-gray-100 p-2 hover:bg-gray-200 active:scale-95 text-gray-700"
           onClick={swap}
@@ -444,7 +443,6 @@ function CurrencyConverter() {
           <ArrowLeftRight size={18} />
         </button>
 
-        {/* TO card */}
         <div className="rounded-2xl bg-white text-gray-900 p-3 border border-gray-100">
           <div className="flex items-center justify-between">
             <label className="text-xs text-gray-600">To</label>
@@ -453,9 +451,7 @@ function CurrencyConverter() {
               value={to}
               onChange={e => setTo(e.target.value as Currency)}
             >
-              <option>GBP</option>
-              <option>THB</option>
-              <option>QAR</option>
+              <option>GBP</option><option>THB</option><option>QAR</option>
             </select>
           </div>
           <input
@@ -466,31 +462,25 @@ function CurrencyConverter() {
         </div>
       </div>
 
-      {/* Compact pill row */}
-      <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-      <div className="flex items-center gap-2">
-          {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
-            <button key={'from-' + c} onClick={() => setFrom(c)} className={segBtn(from === c)}>
-              {c}
-            </button>
+      {/* centered chips */}
+      <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+        <div className="flex items-center justify-center gap-2">
+          {(['GBP','THB','QAR'] as Currency[]).map(c => (
+            <button key={'from-'+c} onClick={() => setFrom(c)} className={segBtn(from === c)}>{c}</button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          {(['GBP', 'THB', 'QAR'] as Currency[]).map(c => (
-            <button key={'to-' + c} onClick={() => setTo(c)} className={segBtn(to === c)}>
-              {c}
-            </button>
+        <div className="flex items-center justify-center gap-2">
+          {(['GBP','THB','QAR'] as Currency[]).map(c => (
+            <button key={'to-'+c} onClick={() => setTo(c)} className={segBtn(to === c)}>{c}</button>
           ))}
         </div>
       </div>
 
-      {/* Subtle rate line */}
+      {/* rate line */}
       <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-sm flex items-center justify-between">
         <div className="flex items-center gap-2 text-gray-700">
           <Info size={14} className="opacity-80" />
-          <span>
-            1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}
-          </span>
+          <span>1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}</span>
         </div>
         <span className="text-xs text-gray-500">
           {state.rates.lastUpdatedISO ? new Date(state.rates.lastUpdatedISO).toLocaleTimeString() : 'no update yet'}
@@ -499,6 +489,7 @@ function CurrencyConverter() {
     </div>
   )
 }
+
 
 
 function Countdowns() {
