@@ -11,15 +11,12 @@ import Dining from './components/Dining'
 import Checklist from './components/Checklist'
 import Planner from './components/Planner'
 
-// ✅ Cloud sync helpers (Option A)
+// Cloud sync helpers (Option A)
 import {
-  getOrCreateUserId,
-  getOrCreateTripId,
   loadState as cloudLoad,
   saveState as cloudSave,
   subscribeState,
   debounce,
-  makeKey,
 } from './lib/sync'
 
 // seeds
@@ -69,24 +66,33 @@ type Ctx = {
 }
 export const AppContext = createContext<Ctx>(null as any)
 
-// feature flag so you can disable cloud quickly if needed
+// Feature flag so you can disable cloud quickly if needed
 const CLOUD_SYNC = true
+
+function getTripId(): string {
+  // 1) allow ?trip=XYZ (shareable links)
+  const url = new URL(window.location.href)
+  const fromUrl = url.searchParams.get('trip')
+  if (fromUrl) {
+    localStorage.setItem('tripmate.tripId', fromUrl)
+    return fromUrl
+  }
+  // 2) or reuse / create
+  const existing = localStorage.getItem('tripmate.tripId')
+  if (existing) return existing
+  const created = 'trip_' + Math.random().toString(36).slice(2, 10)
+  localStorage.setItem('tripmate.tripId', created)
+  return created
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
-
-  // ✅ create or reuse ids ONCE (no deps)
-  const userId = useMemo(() => getOrCreateUserId(), [])
-  const tripId = useMemo(() => getOrCreateTripId(), [])
-  const tripKey = useMemo(() => makeKey(userId, tripId), [userId, tripId])
-
-  // load initial local state
   const [state, setState] = useState<AppState>(() => loadLocal(DEFAULT_STATE))
 
-  // persist to local storage on any state change (always keep this)
+  // Always persist to local storage
   useEffect(() => { saveLocal(state) }, [state])
 
-  // get live rates once on mount (skip if manual override)
+  // Live FX once on mount (skip if manual override)
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -97,52 +103,51 @@ export default function App() {
           setState(s => ({ ...s, rates: { ...s.rates, ...live, lastUpdatedISO: new Date().toISOString() } }))
         }
       } catch {
-        // ignore
+        // ignore fetch error
       }
     })()
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // once
 
-  // ---------- Cloud sync (Option A) ----------
+  // ---------- Cloud sync (Option A: tripId only) ----------
+  const tripId = useMemo(() => getTripId(), [])
+
   // 1) On mount, try to load from cloud; if present, adopt it
   useEffect(() => {
     if (!CLOUD_SYNC) return
     let cancelled = false
     ;(async () => {
       try {
-        const remote = await cloudLoad(tripKey)
-        if (!cancelled && remote) {
-          setState(remote)
-        }
+        const remote = await cloudLoad({ tripId })
+        if (!cancelled && remote) setState(remote)
       } catch (err) {
         console.warn('Cloud load failed:', err)
       }
     })()
     return () => { cancelled = true }
-  }, [tripKey])
+  }, [tripId])
 
-  // 2) Subscribe to remote changes for this trip and merge them in
+  // 2) Subscribe to remote changes for this trip and adopt them
   useEffect(() => {
     if (!CLOUD_SYNC) return
-    // subscription pushes the whole state row; adopt it
-    const unsubscribe = subscribeState(tripKey, (next) => {
+    const unsubscribe = subscribeState({ tripId }, (next) => {
       setState(next)
     })
     return () => unsubscribe()
-  }, [tripKey])
+  }, [tripId])
 
-  // 3) Debounced push to cloud whenever state changes locally
+  // 3) Debounced push to cloud whenever local state changes
   const debouncedCloudSave = useMemo(
-    () => debounce((key: { userId: string; tripId: string }, s: AppState) => {
-      cloudSave(key, s).catch(err => console.warn('Cloud save failed:', err))
+    () => debounce((s: AppState) => {
+      cloudSave({ tripId }, s).catch(err => console.warn('Cloud save failed:', err))
     }, 800),
-    []
+    [tripId]
   )
   useEffect(() => {
     if (!CLOUD_SYNC) return
-    debouncedCloudSave(tripKey, state)
-  }, [state, tripKey, debouncedCloudSave])
+    debouncedCloudSave(state)
+  }, [state, debouncedCloudSave])
   // ---------- /Cloud sync ----------
 
   const tabs = [
