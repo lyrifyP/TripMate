@@ -13,6 +13,7 @@ import {
   SunMedium,
   Droplets,
   Shield,
+  MapPin, Navigation
 } from 'lucide-react'
 
 
@@ -26,6 +27,7 @@ export default function Dashboard() {
       <CurrencyConverter />
       <Countdowns />
       <HolidayEssentials />
+      <RouteMiniMap /> 
       <SyncBlock />
     </div>
   )
@@ -678,6 +680,162 @@ function HolidayEssentials() {
             Nothing here for this bucket
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function RouteMiniMap() {
+  // Simple equirectangular projection and great circle sampling
+
+  type Pt = { name: string; lat: number; lon: number }
+  const points: Pt[] = [
+    { name: 'Birmingham', lat: 52.4862, lon: -1.8904 },
+    { name: 'Doha',       lat: 25.2854, lon:  51.5310 },
+    { name: 'Koh Samui',  lat:  9.5120, lon: 100.0130 },
+  ]
+
+  // Haversine distance in km
+  function haversine(a: Pt, b: Pt) {
+    const R = 6371
+    const toRad = (d: number) => d * Math.PI / 180
+    const dLat = toRad(b.lat - a.lat)
+    const dLon = toRad(b.lon - a.lon)
+    const lat1 = toRad(a.lat)
+    const lat2 = toRad(b.lat)
+    const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2
+    return 2 * R * Math.asin(Math.sqrt(x))
+  }
+
+  // Equirectangular projection
+  const W = 700  // internal svg width
+  const H = 350  // internal svg height
+  const proj = (lat: number, lon: number) => {
+    const x = ((lon + 180) / 360) * W
+    const y = ((90 - lat) / 180) * H
+    return [x, y] as const
+  }
+
+  // Great circle approximate as small line segments
+  function arcPath(a: Pt, b: Pt, steps = 64) {
+    const toRad = (d: number) => d * Math.PI / 180
+    const toDeg = (r: number) => r * 180 / Math.PI
+
+    const φ1 = toRad(a.lat), λ1 = toRad(a.lon)
+    const φ2 = toRad(b.lat), λ2 = toRad(b.lon)
+
+    // spherical linear interpolation
+    const Δσ = 2 * Math.asin(
+      Math.sqrt(
+        Math.sin((φ2-φ1)/2)**2 +
+        Math.cos(φ1)*Math.cos(φ2)*Math.sin((λ2-λ1)/2)**2
+      )
+    ) || 1e-6
+
+    const path: string[] = []
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps
+      const A = Math.sin((1 - t) * Δσ) / Math.sin(Δσ)
+      const B = Math.sin(t * Δσ) / Math.sin(Δσ)
+
+      const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2)
+      const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2)
+      const z = A * Math.sin(φ1) + B * Math.sin(φ2)
+
+      const φ = Math.atan2(z, Math.sqrt(x*x + y*y))
+      const λ = Math.atan2(y, x)
+
+      const lat = toDeg(φ)
+      const lon = toDeg(λ)
+      const [px, py] = proj(lat, lon)
+      path.push(`${i === 0 ? 'M' : 'L'} ${px.toFixed(1)} ${py.toFixed(1)}`)
+    }
+    return path.join(' ')
+  }
+
+  const legs: [Pt, Pt, string][] = [
+    [points[0], points[1], 'Birmingham to Doha'],
+    [points[1], points[2], 'Doha to Koh Samui'],
+  ]
+
+  // Distances
+  const d1 = Math.round(haversine(points[0], points[1]))
+  const d2 = Math.round(haversine(points[1], points[2]))
+
+  return (
+    <div className="card-lg">
+      <div className="flex items-center justify-between">
+        <h3 className="section-title flex items-center gap-2">
+          <Navigation size={16} /> Route overview
+        </h3>
+        <div className="text-xs text-gray-500">
+          {`BHX → DOH ${d1.toLocaleString()} km, DOH → USM ${d2.toLocaleString()} km`}
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-gray-200 overflow-hidden">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="block w-full"
+          role="img"
+          aria-label="World route map"
+        >
+          {/* background */}
+          <rect x="0" y="0" width={W} height={H} fill="#fafafa" />
+
+          {/* subtle graticule */}
+          {Array.from({ length: 12 }).map((_, i) => {
+            const x = (i+1) * (W/12)
+            return <line key={'vx'+i} x1={x} y1={0} x2={x} y2={H} stroke="#eaeaea" strokeWidth="1" />
+          })}
+          {Array.from({ length: 6 }).map((_, i) => {
+            const y = (i+1) * (H/6)
+            return <line key={'hz'+i} x1={0} y1={y} x2={W} y2={y} stroke="#eaeaea" strokeWidth="1" />
+          })}
+
+          {/* arcs */}
+          {legs.map(([a, b], idx) => (
+            <path
+              key={idx}
+              d={arcPath(a, b)}
+              fill="none"
+              stroke={idx === 0 ? '#60a5fa' : '#818cf8'}
+              strokeOpacity="0.9"
+              strokeWidth="2.5"
+            />
+          ))}
+
+          {/* points and labels */}
+          {points.map(p => {
+            const [x, y] = proj(p.lat, p.lon)
+            return (
+              <g key={p.name}>
+                <circle cx={x} cy={y} r="4.5" fill="#111827" />
+                <text
+                  x={x + 8}
+                  y={y - 8}
+                  fontSize="12"
+                  fill="#374151"
+                >
+                  {p.name}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+
+      {/* legend */}
+      <div className="mt-2 flex items-center gap-3 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-block h-2 w-5 rounded bg-blue-400" /> BHX → DOH
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-block h-2 w-5 rounded bg-indigo-400" /> DOH → USM
+        </span>
+        <span className="ml-auto inline-flex items-center gap-1 text-gray-500">
+          <MapPin size={12} /> approximate routes
+        </span>
       </div>
     </div>
   )
