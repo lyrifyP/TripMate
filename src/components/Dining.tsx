@@ -34,17 +34,25 @@ export default function Dining() {
     q: '',
   })
 
+  const isDefaultFilter = (f: Filter) =>
+    f.area === 'All' &&
+    f.price === 'All' &&
+    f.cuisine === 'All' &&
+    f.tag === 'All' &&
+    !f.favOnly &&
+    f.q.trim() === ''
+
   // Build option lists from current data
   const cuisines = useMemo(() => {
     const s = new Set<string>()
     state.restaurants.forEach(r => r.cuisine && s.add(r.cuisine))
-    return ['All', ...Array.from(s).sort()]
+    return Array.from(s).sort()
   }, [state.restaurants])
 
   const tags = useMemo(() => {
     const s = new Set<string>()
     state.restaurants.forEach(r => r.tags?.forEach(t => s.add(t)))
-    return ['All', ...Array.from(s).sort()]
+    return Array.from(s).sort()
   }, [state.restaurants])
 
   // Filtered list
@@ -91,7 +99,10 @@ export default function Dining() {
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Utensils size={18} /> Dining
           </h2>
-          <button className="rounded-xl bg-white/15 px-3 py-1 text-sm backdrop-blur" onClick={addCurated}>
+          <button
+            className="rounded-xl bg-white/15 px-3 py-1 text-sm backdrop-blur"
+            onClick={addCurated}
+          >
             Add curated picks
           </button>
         </div>
@@ -99,59 +110,115 @@ export default function Dining() {
           Hand picked for Samui and Doha, favourites bubble to the top
         </p>
 
-        {/* Quick filter row */}
+        {/* Quick filter row, with labels */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Search */}
           <div className="relative min-w-0">
             <span className="absolute left-2 top-2.5 opacity-80"><Search size={16} /></span>
             <input
+              aria-label="Search restaurants"
               className="w-full pl-8 pr-3 py-2 rounded-xl bg-white/10 placeholder-white/70 text-white border border-white/20"
-              placeholder="Search restaurant or tag"
+              placeholder="Search name, cuisine, tag"
               value={filter.q}
               onChange={e => setFilter(f => ({ ...f, q: e.target.value }))}
             />
           </div>
+
+          {/* Area and Favourites */}
           <div className="flex gap-2 flex-wrap">
-            <button
-              className={'px-3 py-1 rounded-lg text-sm ' + (filter.area === 'All' ? 'bg-white/20' : 'bg-white/10')}
-              onClick={() => setFilter(f => ({ ...f, area: f.area === 'All' ? 'Samui' : f.area === 'Samui' ? 'Doha' : 'All' }))}
-              title="Cycle area"
-            >
-              {filter.area === 'All' ? 'All areas' : filter.area}
-            </button>
-            <button
-              className={'px-3 py-1 rounded-lg text-sm ' + (filter.favOnly ? 'bg-white/20' : 'bg-white/10')}
-              onClick={() => setFilter(f => ({ ...f, favOnly: !f.favOnly }))}
-              title="Show favourites only"
-            >
-              {filter.favOnly ? 'Favourites' : 'All'}
-            </button>
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] leading-none text-white/80">Area</span>
+              <button
+                className={'px-3 py-1 rounded-lg text-sm ' + (filter.area === 'All' ? 'bg-white/20' : 'bg-white/10')}
+                onClick={() =>
+                  setFilter(f => ({
+                    ...f,
+                    area: f.area === 'All' ? 'Samui' : f.area === 'Samui' ? 'Doha' : 'All'
+                  }))
+                }
+                title="Cycle area"
+                aria-label="Cycle area filter"
+              >
+                {filter.area === 'All' ? 'All areas' : filter.area}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] leading-none text-white/80">Favourites</span>
+              <button
+                className={'px-3 py-1 rounded-lg text-sm ' + (filter.favOnly ? 'bg-white/20' : 'bg-white/10')}
+                onClick={() => setFilter(f => ({ ...f, favOnly: !f.favOnly }))}
+                title="Toggle favourites filter"
+                aria-pressed={filter.favOnly}
+              >
+                {filter.favOnly ? 'Favourites' : 'All'}
+              </button>
+            </div>
           </div>
+
+          {/* Price, Cuisine, Tag */}
           <div className="flex gap-2 flex-wrap">
-            <select
-              className="flex-1 rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
-              value={filter.price}
-              onChange={e => setFilter(f => ({ ...f, price: e.target.value as Filter['price'] }))}
-            >
-              <option value="All">All prices</option>
-              <option value="£">£</option>
-              <option value="££">££</option>
-              <option value="£££">£££</option>
-            </select>
-            <select
-              className="flex-1 rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
-              value={filter.cuisine}
-              onChange={e => setFilter(f => ({ ...f, cuisine: e.target.value as Filter['cuisine'] }))}
-            >
-              {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select
-              className="flex-1 rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
-              value={filter.tag}
-              onChange={e => setFilter(f => ({ ...f, tag: e.target.value as Filter['tag'] }))}
-            >
-              {tags.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <label className="flex-1">
+              <span className="block text-[11px] leading-none text-white/80 mb-1">Price</span>
+              <select
+                className="w-full rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
+                value={filter.price}
+                onChange={e => setFilter(f => ({ ...f, price: e.target.value as Filter['price'] }))}
+                aria-label="Filter by price"
+              >
+                <option value="All">All prices</option>
+                <option value="£">£</option>
+                <option value="££">££</option>
+                <option value="£££">£££</option>
+              </select>
+            </label>
+
+            <label className="flex-1">
+              <span className="block text-[11px] leading-none text-white/80 mb-1">Cuisine</span>
+              <select
+                className="w-full rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
+                value={filter.cuisine}
+                onChange={e => setFilter(f => ({ ...f, cuisine: e.target.value as Filter['cuisine'] }))}
+                aria-label="Filter by cuisine"
+              >
+                <option value="All">All cuisines</option>
+                {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+
+            <label className="flex-1">
+              <span className="block text-[11px] leading-none text-white/80 mb-1">Tag</span>
+              <select
+                className="w-full rounded-lg bg-white/10 border border-white/20 px-3 py-1 text-sm"
+                value={filter.tag}
+                onChange={e => setFilter(f => ({ ...f, tag: e.target.value as Filter['tag'] }))}
+                aria-label="Filter by tag"
+              >
+                <option value="All">All tags</option>
+                {tags.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
           </div>
+        </div>
+
+        {/* Clear filters */}
+        <div className="mt-2 flex justify-end">
+          <button
+            className="text-xs text-white/80 underline hover:text-white disabled:opacity-40 disabled:no-underline"
+            onClick={() =>
+              setFilter({
+                area: 'All',
+                price: 'All',
+                cuisine: 'All',
+                tag: 'All',
+                favOnly: false,
+                q: '',
+              })
+            }
+            disabled={isDefaultFilter(filter)}
+          >
+            Clear filters
+          </button>
         </div>
       </div>
 
