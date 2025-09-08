@@ -377,7 +377,7 @@ function CurrencyConverter() {
     <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
       {/* compact header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-900">Currency converter</h3>
+      <h3 className="section-title">Currency</h3>
         <div className="flex items-center gap-2">
           {/* icon only refresh */}
           <button
@@ -477,16 +477,20 @@ function CurrencyConverter() {
       </div>
 
       {/* rate line */}
-      <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-sm flex items-center justify-between">
-        <div className="flex items-center gap-2 text-gray-700">
-          <Info size={14} className="opacity-80" />
-          <span>1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}</span>
-        </div>
-        <span className="text-xs text-gray-500">
-          {state.rates.lastUpdatedISO ? new Date(state.rates.lastUpdatedISO).toLocaleTimeString() : 'no update yet'}
-        </span>
-      </div>
+  <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+    <div className="flex items-center gap-1">
+      <Info size={12} className="opacity-60" />
+      <span>
+        1 {from} = {oneFromTo.toFixed(4)} {to}, 1 {to} = {oneToFrom.toFixed(4)} {from}
+      </span>
     </div>
+    <span>
+      {state.rates.lastUpdatedISO
+        ? new Date(state.rates.lastUpdatedISO).toLocaleTimeString()
+        : 'no update yet'}
+    </span>
+  </div>
+  </div>
   )
 }
 
