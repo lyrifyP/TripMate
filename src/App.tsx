@@ -51,6 +51,7 @@ const DEFAULT_STATE: AppState = {
     // Move from Samui to Doha during the trip, Samui is UTC+07:00
     { id: 'flight-doha', label: 'Flight to Doha', atISO: '2025-09-24T22:45:00+07:00' }
   ],
+  steps: {},
 }
 
 type Ctx = {

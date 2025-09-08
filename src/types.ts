@@ -64,4 +64,5 @@ export type AppState = {
   checklist: ChecklistItem[]
   plan: PlanItem[]
   specialEvents: { id: string, label: string, atISO: string }[]
+  steps?: Record<string, number>
 }
