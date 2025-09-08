@@ -916,78 +916,189 @@ function StepsBlock() {
 /* =========================================================
    Sync (copy/paste + reset)
    ========================================================= */
-function SyncBlock() {
-  const { state, setState } = useContext(AppContext)
-  const [open, setOpen] = useState(false)
-  const [text, setText] = useState('')
-
-  function resetAll() {
-    if (!confirm('Reset all TripMate data on this device, this cannot be undone.')) return
-    try {
-      // If you know your storage key, prefer removing just that key.
-      localStorage.clear()
-      location.reload()
-    } catch {
-      alert('Reset failed')
+   function SyncBlock() {
+    const { state, setState } = useContext(AppContext)
+    const [open, setOpen] = useState(false)
+    const [text, setText] = useState('')
+  
+    // --- trip sharing helpers ---
+    const tripId = useMemo(() => {
+      const url = new URL(window.location.href)
+      const fromUrl = url.searchParams.get('trip')
+      if (fromUrl) return fromUrl
+      // fallback to what App created
+      return localStorage.getItem('tripmate.tripId') ?? 'unknown'
+    }, [])
+  
+    const shareUrl = useMemo(() => {
+      const { origin, pathname } = window.location
+      return `${origin}${pathname}?trip=${tripId}`
+    }, [tripId])
+  
+    async function copyShareUrl() {
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        alert('Link copied!')
+      } catch {
+        alert('Could not copy link')
+      }
     }
-  }
-
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="font-semibold">Sync</h4>
-          <p className="text-sm text-gray-600">Share or paste trip data between two devices</p>
+  
+    async function nativeShare() {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'TripMate',
+            text: 'Join my trip on TripMate:',
+            url: shareUrl,
+          })
+        } catch {
+          // user cancelled or share failed — ignore
+        }
+      } else {
+        // fallback: copy
+        copyShareUrl()
+      }
+    }
+  
+    function joinTripById(id: string) {
+      const clean = id.trim()
+      if (!clean) return
+      const { origin, pathname } = window.location
+      // reloads app under the new tripId (will pull cloud state & subscribe)
+      window.location.href = `${origin}${pathname}?trip=${encodeURIComponent(clean)}`
+    }
+  
+    function resetAll() {
+      if (!confirm('Reset all TripMate data on this device? This cannot be undone.')) return
+      try {
+        localStorage.clear()
+        location.reload()
+      } catch {
+        alert('Reset failed')
+      }
+    }
+  
+    return (
+      <div className="card">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">Sync & Share</h3>
+            <p className="text-sm text-gray-600">Share this trip or paste data between devices</p>
+          </div>
+          <button className="rounded-xl bg-gray-100 px-3 py-1" onClick={() => setOpen(v => !v)}>
+            {open ? 'Close' : 'Open'}
+          </button>
         </div>
-        <button className="rounded-xl bg-gray-100 px-3 py-1" onClick={() => setOpen(v => !v)}>
-          {open ? 'Close' : 'Open'}
+  
+        {open && (
+          <div className="mt-3 border border-gray-200 rounded-2xl p-3 space-y-3">
+            {/* Share this trip */}
+            <div>
+              <div className="text-sm font-medium mb-1">Share this trip</div>
+              <div className="text-xs text-gray-600 mb-2">
+                Anyone opening this link will join the same live trip (realtime sync).
+              </div>
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm"
+                    value={shareUrl}
+                    readOnly
+                  />
+                  <button className="rounded-xl bg-gray-100 px-3 py-2 text-sm" onClick={copyShareUrl}>
+                    Copy
+                  </button>
+                  <button className="rounded-xl bg-gray-100 px-3 py-2 text-sm" onClick={nativeShare}>
+                    Share
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Trip ID: <span className="font-mono">{tripId}</span>
+                </div>
+              </div>
+            </div>
+  
+            {/* Join a trip by ID */}
+            <div className="pt-2 border-t border-gray-200">
+              <div className="text-sm font-medium mb-1">Join another trip</div>
+              <JoinTrip />
+            </div>
+  
+            {/* Raw copy/paste backup */}
+            <div className="pt-2 border-t border-gray-200">
+              <div className="text-sm font-medium mb-1">Manual backup</div>
+              <div className="grid gap-2">
+                <button
+                  className="tile w-full"
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(state))}
+                >
+                  Copy data (JSON)
+                </button>
+                <textarea
+                  className="w-full h-32 card"
+                  placeholder="Paste data here"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <button
+                  className="tile w-full"
+                  onClick={() => {
+                    try {
+                      const parsed = JSON.parse(text)
+                      setState(parsed)
+                      setOpen(false)
+                    } catch {
+                      alert('Invalid JSON')
+                    }
+                  }}
+                >
+                  Replace with pasted
+                </button>
+              </div>
+            </div>
+  
+            {/* Dangerous: reset */}
+            <div className="pt-2 border-t border-gray-200">
+              <button
+                className="tile w-full bg-red-50 text-red-700 hover:bg-red-100"
+                onClick={resetAll}
+              >
+                Reset all data on this device
+              </button>
+              <p className="text-xs text-gray-500 mt-1">
+                This clears local storage only. Cloud data remains under the shared trip.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+  
+  // small sub-component so the join input has its own local state
+  function JoinTrip() {
+    const [input, setInput] = useState('')
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Enter Trip ID (e.g. trip_ab12cd34)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+        <button
+          className="rounded-xl bg-gray-100 px-3 py-2 text-sm"
+          onClick={() => {
+            const id = input.trim()
+            if (!id) return
+            const { origin, pathname } = window.location
+            window.location.href = `${origin}${pathname}?trip=${encodeURIComponent(id)}`
+          }}
+        >
+          Join
         </button>
       </div>
-
-      {open && (
-        <div className="mt-3 border border-gray-200 rounded-2xl p-3 space-y-2">
-          <button
-            className="tile w-full"
-            onClick={() => navigator.clipboard.writeText(JSON.stringify(state))}
-          >
-            Copy data
-          </button>
-
-          <button
-            className="tile w-full bg-red-50 text-red-700 hover:bg-red-100"
-            onClick={resetAll}
-          >
-            Reset all data
-          </button>
-
-          <textarea
-            className="w-full h-32 card"
-            placeholder="Paste data here"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-
-          <button
-            className="tile w-full"
-            onClick={() => {
-              try {
-                const parsed = JSON.parse(text)
-                setState(parsed)
-              } catch {
-                alert('Invalid JSON')
-                return
-              }
-              setOpen(false)
-            }}
-          >
-            Replace with pasted
-          </button>
-
-          <p className="text-xs text-gray-500">
-            Tip: Reset clears local storage for this site and reloads the app with defaults.
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
+    )
+  }
+  
