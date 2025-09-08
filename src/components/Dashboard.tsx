@@ -126,143 +126,168 @@ function Hero() {
 /* =========================================================
    Flights at a glance (+ “flights only” modal)
    ========================================================= */
-function FlightsAtGlance() {
-  const { state, setActiveTab } = useContext(AppContext)
-  const [open, setOpen] = useState(false)
-
-  // choose flight-like items from the plan
-  const isFlightLike = (t: string) =>
-    t.startsWith('Depart') || t.startsWith('Arrive') || t.startsWith('Check in') || t.startsWith('Transfer')
-
-  const now = new Date()
-  const withWhen = state.plan
-    .filter(p => isFlightLike(p.title))
-    .map(p => {
-      const time = p.time ? p.time : '00:01' // put undated items just after midnight
-      const at = new Date(`${p.date}T${time}`)
-      return { ...p, at }
-    })
-    .sort((a, b) => a.at.getTime() - b.at.getTime())
-
-  const upcoming = withWhen.filter(p => p.at.getTime() >= now.getTime()).slice(0, 4)
-  const next = upcoming[0]
-
-  const iconFor = (title: string) => {
-    if (title.startsWith('Depart')) return <PlaneTakeoff size={16} className="text-sky-600" />
-    if (title.startsWith('Arrive')) return <PlaneLanding size={16} className="text-emerald-600" />
-    return <Plane size={16} className="text-gray-600" />
-  }
-
-  return (
-    <>
-      {/* header actions kept minimal; “Plan” opens Planner, ✈ opens modal */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <CalendarClock size={16} /> <span className="font-medium">Flights at a glance</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
-            onClick={() => setActiveTab('planner')}
-            title="Open full plan"
-          >
-            Plan
-          </button>
-          <button
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
-            onClick={() => setOpen(true)}
-            title="Flights only"
-            aria-label="Flights only"
-          >
-            <Plane className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {next && (
-        <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
-            <span className="opacity-90">
-              {new Date(next.date).toLocaleDateString(undefined, {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-              })}
-              {next.time ? `, ${next.time}` : ''}
-            </span>
+   function FlightsAtGlance() {
+    const { state, setActiveTab } = useContext(AppContext)
+    const [open, setOpen] = useState(false)
+  
+    // lock body scroll when modal open
+    useEffect(() => {
+      if (!open) return
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = prev }
+    }, [open])
+  
+    // choose flight-like items from the plan
+    const isFlightLike = (t: string) =>
+      t.startsWith('Depart') || t.startsWith('Arrive') || t.startsWith('Check in') || t.startsWith('Transfer')
+  
+    const now = new Date()
+    const withWhen = state.plan
+      .filter(p => isFlightLike(p.title))
+      .map(p => {
+        const time = p.time ? p.time : '00:01' // put undated items just after midnight
+        const at = new Date(`${p.date}T${time}`)
+        return { ...p, at }
+      })
+      .sort((a, b) => a.at.getTime() - b.at.getTime())
+  
+    const upcoming = withWhen.filter(p => p.at.getTime() >= now.getTime()).slice(0, 4)
+    const next = upcoming[0]
+  
+    const iconFor = (title: string) => {
+      if (title.startsWith('Depart')) return <PlaneTakeoff size={16} className="text-sky-600" />
+      if (title.startsWith('Arrive')) return <PlaneLanding size={16} className="text-emerald-600" />
+      return <Plane size={16} className="text-gray-600" />
+    }
+  
+    return (
+      <>
+        {/* header actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <CalendarClock size={16} /> <span className="font-medium">Flights at a glance</span>
           </div>
-          <div className="mt-1 text-base font-semibold">{next.title}</div>
+          <div className="flex items-center gap-1">
+            <button
+              className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+              onClick={() => setActiveTab('planner')}
+              title="Open full plan"
+            >
+              Plan
+            </button>
+  
+            {/* Make the plane button obvious */}
+            <button
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+              onClick={() => setOpen(true)}
+              title="Flights & transfers"
+              aria-haspopup="dialog"
+              aria-expanded={open}
+            >
+              <Plane className="w-4 h-4" />
+              <span className="hidden sm:inline">Flights</span>
+            </button>
+          </div>
         </div>
-      )}
-
-      {upcoming.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {upcoming.map(p => (
-            <div key={p.id} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 min-w-0">
-                {iconFor(p.title)}
-                <span className="truncate">{p.title}</span>
-              </div>
-              <div className="ml-2 text-gray-600 shrink-0">
-                {new Date(p.date).toLocaleDateString(undefined, {
+  
+        {next && (
+          <div className="mt-3 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">{iconFor(next.title)} Next up</span>
+              <span className="opacity-90">
+                {new Date(next.date).toLocaleDateString(undefined, {
                   weekday: 'short',
                   day: 'numeric',
                   month: 'short',
                 })}
-                {p.time ? `, ${p.time}` : ''}
+                {next.time ? `, ${next.time}` : ''}
+              </span>
+            </div>
+            <div className="mt-1 text-base font-semibold">{next.title}</div>
+          </div>
+        )}
+  
+        {upcoming.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-600">No upcoming flights found</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {upcoming.map(p => (
+              <div key={p.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  {iconFor(p.title)}
+                  <span className="truncate">{p.title}</span>
+                </div>
+                <div className="ml-2 text-gray-600 shrink-0">
+                  {new Date(p.date).toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                  {p.time ? `, ${p.time}` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+  
+        {/* flights only modal */}
+        {open && (
+          <div className="fixed inset-0 z-50">
+            {/* backdrop */}
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+  
+            {/* sheet / panel */}
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[420px]
+                         bg-white rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4
+                         max-h-[80vh] sm:max-h-screen overflow-y-auto overscroll-contain"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between sticky top-0 bg-white pb-2">
+                <h3 className="text-base font-semibold">Flights and transfers</h3>
+                <button
+                  className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+                  onClick={() => setOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+  
+              <div className="mt-3 space-y-3">
+                {groupByDate(withWhen).map(g => (
+                  <div key={g.date} className="rounded-2xl border border-gray-200 p-3">
+                    <div className="text-sm font-medium mb-2">
+                      {new Date(g.date).toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </div>
+                    <div className="space-y-2">
+                      {g.items.map(it => (
+                        <div key={it.id} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {iconFor(it.title)}
+                            <span className="truncate">{it.title}</span>
+                          </div>
+                          <div className="ml-2 text-gray-600 shrink-0">{it.time || '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* flights only modal */}
-      {open && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[420px] bg-white rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4 overflow-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Flights and transfers</h3>
-              <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={() => setOpen(false)}>
-                Close
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-3">
-              {groupByDate(withWhen).map(g => (
-                <div key={g.date} className="rounded-2xl border border-gray-200 p-3">
-                  <div className="text-sm font-medium mb-2">
-                    {new Date(g.date).toLocaleDateString(undefined, {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </div>
-                  <div className="space-y-2">
-                    {g.items.map(it => (
-                      <div key={it.id} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {iconFor(it.title)}
-                          <span className="truncate">{it.title}</span>
-                        </div>
-                        <div className="ml-2 text-gray-600 shrink-0">{it.time || '—'}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
-        </div>
-      )}
-    </>
-  )
-}
-
+        )}
+      </>
+    )
+  }
+  
 function groupByDate<T extends { date: string }>(items: T[]) {
   const map = new Map<string, T[]>()
   items.forEach(i => {
