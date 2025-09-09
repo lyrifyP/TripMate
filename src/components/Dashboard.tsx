@@ -1,16 +1,16 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { AppContext } from '../App'
 import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
+import NewsTicker from './NewsTicker'
 import {
   CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
   Sun, SunMedium, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
   RefreshCw, ArrowLeftRight, Shield, Info,
   Luggage, Droplets,
-  PoundSterling, Eye, Utensils, ListChecks,
-  Moon
 } from 'lucide-react'
+
 
 /* =========================================================
    Dashboard (home)
@@ -19,6 +19,10 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       <Hero />
+
+      <CollapsibleCard title="Latest news" storageKey="home.news" defaultOpen>
+         <NewsTicker />
+      </CollapsibleCard>
 
       <CollapsibleCard title="Events at a glance" storageKey="home.flights" defaultOpen>
         <FlightsAtGlance />
@@ -122,6 +126,7 @@ function Hero() {
     </div>
   )
 }
+
 
 /* =========================================================
    Flights at a glance (+ “flights only” modal)
