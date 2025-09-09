@@ -20,7 +20,7 @@ export default function Dashboard() {
     <div className="space-y-4">
       <Hero />
 
-      <CollapsibleCard title="Flights at a glance" storageKey="home.flights" defaultOpen>
+      <CollapsibleCard title="Events at a glance" storageKey="home.flights" defaultOpen>
         <FlightsAtGlance />
       </CollapsibleCard>
 
