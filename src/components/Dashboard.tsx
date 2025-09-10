@@ -3,7 +3,7 @@ import { AppContext } from '../App'
 import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
-import NewsTicker from './NewsTicker'
+import NewsCard from './NewsCard'
 import {
   CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
   Sun, SunMedium, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
@@ -20,9 +20,13 @@ export default function Dashboard() {
     <div className="space-y-4">
       <Hero />
 
-      <CollapsibleCard title="Latest news" storageKey="home.news" defaultOpen>
-         <NewsTicker />
-      </CollapsibleCard>
+      <CollapsibleCard title="Travel news" storageKey="home.news" defaultOpen>
+  <NewsCard
+    query='(Doha OR Qatar) OR ("Koh Samui" OR Thailand)'
+    limit={6}
+    autoRefreshMin={15}
+  />
+</CollapsibleCard>
 
       <CollapsibleCard title="Events at a glance" storageKey="home.flights" defaultOpen>
         <FlightsAtGlance />
