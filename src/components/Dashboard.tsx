@@ -675,13 +675,18 @@ function WeatherBlock() {
       {loading && <p className="text-sm text-gray-600">Loading forecast…</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {data && !loading && !error && (
-       <div className="grid grid-cols-2 gap-3 max-[360px]:grid-cols-1">
-          <City name="Koh Samui" days={data.samui} />
-          <City name="Doha" days={data.doha} />
+        <div className="grid grid-cols-2 gap-3 max-[360px]:grid-cols-1">
+          <City name="Koh Samui" days={data.samui} onOpenDetail={c => setDetail(c)} />
+          <City name="Doha" days={data.doha} onOpenDetail={c => setDetail(c)} />
         </div>
       )}
+  
+      {detail && (
+        <CityDetailModal city={detail} onClose={() => setDetail(null)} />
+      )}
     </>
-  )
+
+    )
 }
 
 const weatherIcons: Record<number, JSX.Element> = {
