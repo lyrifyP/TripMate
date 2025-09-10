@@ -28,6 +28,10 @@ export default function Dashboard() {
   />
 </CollapsibleCard>
 
+<CollapsibleCard title="Local time" storageKey="home.time" defaultOpen>
+  <WorldClocks />
+</CollapsibleCard>
+
       <CollapsibleCard title="Events at a glance" storageKey="home.flights" defaultOpen>
         <FlightsAtGlance />
       </CollapsibleCard>
@@ -308,6 +312,135 @@ function groupByDate<T extends { date: string }>(items: T[]) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, items]) => ({ date, items }))
 }
+
+/* =========================================================
+   Local Time – UK / Doha / Koh Samui
+   ========================================================= */
+   function WorldClocks() {
+    // tick every second
+    const [, setTick] = React.useState(0)
+    React.useEffect(() => {
+      const id = setInterval(() => setTick(t => t + 1), 1000)
+      return () => clearInterval(id)
+    }, [])
+  
+    const zones: { city: string; tz: string }[] = [
+      { city: 'UK (London)', tz: 'Europe/London' },
+      { city: 'Doha', tz: 'Asia/Qatar' },
+      { city: 'Koh Samui', tz: 'Asia/Bangkok' },
+    ]
+  
+    return (
+      <div className="grid grid-cols-3 gap-3 max-[400px]:grid-cols-1 sm:grid-cols-3">
+        {zones.map(z => (
+          <ClockCard key={z.tz} city={z.city} tz={z.tz} />
+        ))}
+      </div>
+    )
+  }
+  
+  function ClockCard({ city, tz }: { city: string; tz: string }) {
+    const { h, m, s, dateStr, timeStr } = getZonedParts(tz)
+    return (
+      <div className="rounded-2xl border border-gray-200 p-3 flex items-center gap-3">
+        <AnalogClock h={h} m={m} s={s} />
+        <div className="min-w-0">
+          <div className="text-sm font-medium truncate">{city}</div>
+          <div className="text-lg font-semibold tabular-nums leading-tight">{timeStr}</div>
+          <div className="text-xs text-gray-500">{dateStr}</div>
+        </div>
+      </div>
+    )
+  }
+  
+  /** Read h/m/s + formatted date/time for a specific IANA timezone. */
+  function getZonedParts(tz: string) {
+    const now = new Date()
+    // numeric parts
+    const parts = Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(now)
+    const h = Number(parts.find(p => p.type === 'hour')?.value ?? '0')
+    const m = Number(parts.find(p => p.type === 'minute')?.value ?? '0')
+    const s = Number(parts.find(p => p.type === 'second')?.value ?? '0')
+  
+    const dateStr = Intl.DateTimeFormat(undefined, {
+      timeZone: tz,
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    }).format(now)
+  
+    const timeStr = Intl.DateTimeFormat(undefined, {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(now)
+  
+    return { h, m, s, dateStr, timeStr }
+  }
+  
+  /** Tiny analog clock (SVG), minimal + crisp. */
+  function AnalogClock({ h, m, s }: { h: number; m: number; s: number }) {
+    const size = 56
+    const r = 26
+    // angles
+    const hourAngle = ((h % 12) + m / 60) * 30 // deg
+    const minAngle = (m + s / 60) * 6
+    const secAngle = s * 6
+  
+    return (
+      <svg viewBox="0 0 64 64" width={size} height={size} className="shrink-0">
+        {/* dial */}
+        <circle cx="32" cy="32" r={r + 2} fill="#fff" stroke="#e5e7eb" strokeWidth="2" />
+        {/* tick marks (12) */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const angle = (i * 30 * Math.PI) / 180
+          const x1 = 32 + Math.sin(angle) * (r - 2)
+          const y1 = 32 - Math.cos(angle) * (r - 2)
+          const x2 = 32 + Math.sin(angle) * r
+          const y2 = 32 - Math.cos(angle) * r
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#9ca3af" strokeWidth={i % 3 === 0 ? 2 : 1} />
+        })}
+        {/* hour hand */}
+        <line
+          x1="32" y1="32"
+          x2={polarX(32, 32, r * 0.5, hourAngle)}
+          y2={polarY(32, 32, r * 0.5, hourAngle)}
+          stroke="#111827" strokeWidth="3" strokeLinecap="round"
+        />
+        {/* minute hand */}
+        <line
+          x1="32" y1="32"
+          x2={polarX(32, 32, r * 0.75, minAngle)}
+          y2={polarY(32, 32, r * 0.75, minAngle)}
+          stroke="#1f2937" strokeWidth="2" strokeLinecap="round"
+        />
+        {/* second hand */}
+        <line
+          x1="32" y1="34"
+          x2={polarX(32, 32, r * 0.8, secAngle)}
+          y2={polarY(32, 32, r * 0.8, secAngle)}
+          stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round"
+        />
+        <circle cx="32" cy="32" r="2" fill="#111827" />
+      </svg>
+    )
+  }
+  
+  function polarX(cx: number, cy: number, radius: number, angleDeg: number) {
+    const a = (angleDeg * Math.PI) / 180
+    return cx + Math.sin(a) * radius
+  }
+  function polarY(cx: number, cy: number, radius: number, angleDeg: number) {
+    const a = (angleDeg * Math.PI) / 180
+    return cy - Math.cos(a) * radius
+  }
 
 /* =========================================================
    Weather
