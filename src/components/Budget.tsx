@@ -2,7 +2,10 @@ import React, { useMemo, useState, useContext, useEffect } from 'react'
 import { AppContext } from '../App'
 import type { Area, Currency } from '../types'
 import { convert, formatGBP } from '../lib/currency'
-import { Plus, Trash2, Wallet, Search, PoundSterling, Utensils, Plane } from 'lucide-react'
+import { ocrImage, parseReceipt } from '../lib/ocr'
+import {
+  Plus, Trash2, Wallet, Search, PoundSterling, Utensils, Plane, Scan
+} from 'lucide-react'
 
 type NewSpend = {
   date: string
@@ -102,6 +105,29 @@ export default function Budget() {
     setState(s => ({ ...s, spends: s.spends.filter(x => x.id !== id) }))
   }
 
+  async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await ocrImage(file)
+      const guess = parseReceipt(text)
+      setDraft(d => ({
+        ...d,
+        label: guess.merchant || d.label,
+        amount: guess.amount ?? d.amount,
+        currency: guess.currency ?? d.currency,
+        date: guess.dateISO ?? d.date,
+        notes: d.notes ? d.notes + '\n' + guess.rawText.slice(0, 80) : guess.rawText.slice(0, 80)
+      }))
+      alert('Receipt scanned. Please check and confirm details.')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to scan receipt')
+    } finally {
+      e.target.value = ''
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Summary */}
@@ -119,23 +145,9 @@ export default function Budget() {
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-3">
-          <SummaryCard
-            title="Overall"
-            value={formatGBP(totals.allGBP)}
-            icon={<PoundSterling size={16} />}
-          />
-          <SummaryCard
-            title="Samui"
-            value={formatGBP(totals.samuiGBP)}
-            sub={formatTHB(totals.samuiTHB)}
-            icon={<Utensils size={16} />}
-          />
-          <SummaryCard
-            title="Doha"
-            value={formatGBP(totals.dohaGBP)}
-            sub={formatQAR(totals.dohaQAR)}
-            icon={<Plane size={16} />}
-          />
+          <SummaryCard title="Overall" value={formatGBP(totals.allGBP)} icon={<PoundSterling size={16} />} />
+          <SummaryCard title="Samui" value={formatGBP(totals.samuiGBP)} sub={formatTHB(totals.samuiTHB)} icon={<Utensils size={16} />} />
+          <SummaryCard title="Doha" value={formatGBP(totals.dohaGBP)} sub={formatQAR(totals.dohaQAR)} icon={<Plane size={16} />} />
         </div>
 
         <div className="mt-3 text-xs text-white/90">
@@ -148,9 +160,7 @@ export default function Budget() {
       <div className="card p-3">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
-            <span className="absolute left-2 top-2.5 opacity-60">
-              <Search size={16} />
-            </span>
+            <span className="absolute left-2 top-2.5 opacity-60"><Search size={16} /></span>
             <input
               className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 focus:outline-none"
               placeholder="Search label or notes"
@@ -158,15 +168,11 @@ export default function Budget() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-
           <div className="rounded-xl bg-gray-100 p-1 flex">
             {(['All', 'Samui', 'Doha'] as const).map(v => (
               <button
                 key={v}
-                className={
-                  'px-3 py-1 rounded-lg text-sm ' +
-                  (areaFilter === v ? 'bg-white shadow text-gray-900' : 'text-gray-600')
-                }
+                className={'px-3 py-1 rounded-lg text-sm ' + (areaFilter === v ? 'bg-white shadow text-gray-900' : 'text-gray-600')}
                 onClick={() => setAreaFilter(v)}
               >
                 {v}
@@ -179,97 +185,47 @@ export default function Budget() {
       {/* Add sheet */}
       {open && (
         <div className="card p-4 space-y-3">
-          <h3 className="section-title">Add a spend</h3>
+          <h3 className="section-title flex items-center gap-2">
+            Add a spend
+            <label className="ml-auto flex items-center gap-1 text-xs cursor-pointer">
+              <Scan size={14} /> Scan receipt
+              <input type="file" accept="image/*" className="hidden" onChange={handleReceiptUpload} />
+            </label>
+          </h3>
+
+          {/* form fields */}
           <div className="grid grid-cols-2 gap-2">
-            <input
-              className="card"
-              type="date"
-              value={draft.date}
-              onChange={(e) => setDraft(d => ({ ...d, date: e.target.value }))}
-            />
-            <select
-              className="card"
-              value={draft.area}
-              onChange={(e) => setDraft(d => ({ ...d, area: e.target.value as Area }))}
-            >
+            <input className="card" type="date" value={draft.date} onChange={(e) => setDraft(d => ({ ...d, date: e.target.value }))} />
+            <select className="card" value={draft.area} onChange={(e) => setDraft(d => ({ ...d, area: e.target.value as Area }))}>
               <option>Samui</option>
               <option>Doha</option>
             </select>
-
-            <input
-              className="card col-span-2"
-              placeholder="Label, for example Taxi from airport"
-              value={draft.label}
-              onChange={(e) => setDraft(d => ({ ...d, label: e.target.value }))}
-            />
-
-            <select
-              className="card"
-              value={draft.currency}
-              onChange={(e) => setDraft(d => ({ ...d, currency: e.target.value as Currency }))}
-            >
-              <option>THB</option>
-              <option>QAR</option>
-              <option>GBP</option>
+            <input className="card col-span-2" placeholder="Label, e.g. Taxi from airport" value={draft.label} onChange={(e) => setDraft(d => ({ ...d, label: e.target.value }))} />
+            <select className="card" value={draft.currency} onChange={(e) => setDraft(d => ({ ...d, currency: e.target.value as Currency }))}>
+              <option>THB</option><option>QAR</option><option>GBP</option>
             </select>
-
-            <input
-              className="card"
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Amount"
-              value={draft.amount}
-              onChange={(e) => setDraft(d => ({ ...d, amount: Number(e.target.value) }))}
-            />
-
-            <input
-              className="card col-span-2"
-              placeholder="Notes, optional"
-              value={draft.notes}
-              onChange={(e) => setDraft(d => ({ ...d, notes: e.target.value }))}
-            />
+            <input className="card" type="number" min={0} step="0.01" placeholder="Amount" value={draft.amount} onChange={(e) => setDraft(d => ({ ...d, amount: Number(e.target.value) }))} />
+            <input className="card col-span-2" placeholder="Notes, optional" value={draft.notes} onChange={(e) => setDraft(d => ({ ...d, notes: e.target.value }))} />
           </div>
 
           {/* quick presets */}
           <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Coffee', amt: 120, cur: 'THB' as Currency },
-              { label: 'Taxi', amt: 250, cur: 'THB' as Currency },
-              { label: 'Water', amt: 20, cur: 'THB' as Currency },
-              { label: 'Dinner', amt: 80, cur: 'QAR' as Currency },
-            ].map(p => (
-              <button
-                key={p.label + p.amt + p.cur}
-                className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
-                onClick={() =>
-                  setDraft(d => ({ ...d, label: p.label, amount: p.amt, currency: p.cur }))
-                }
-              >
-                {p.label} {p.amt} {p.cur}
-              </button>
-            ))}
+            {[{ label: 'Coffee', amt: 120, cur: 'THB' as Currency }, { label: 'Taxi', amt: 250, cur: 'THB' as Currency }, { label: 'Water', amt: 20, cur: 'THB' as Currency }, { label: 'Dinner', amt: 80, cur: 'QAR' as Currency }]
+              .map(p => (
+                <button key={p.label} className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={() => setDraft(d => ({ ...d, label: p.label, amount: p.amt, currency: p.cur }))}>
+                  {p.label} {p.amt} {p.cur}
+                </button>
+              ))}
           </div>
 
           {/* GBP equivalent preview */}
           <div className="text-sm text-gray-600">
-            {draft.amount > 0 && (
-              <span>
-                About {formatGBP(convert(draft.amount, draft.currency, 'GBP', state.rates))}
-              </span>
-            )}
+            {draft.amount > 0 && <span>About {formatGBP(convert(draft.amount, draft.currency, 'GBP', state.rates))}</span>}
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="tile flex items-center gap-2" onClick={addSpend}>
-              <Plus size={16} /> Add spend
-            </button>
-            <button
-              className="rounded-xl px-3 py-2 text-sm text-gray-700 bg-gray-100"
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </button>
+            <button className="tile flex items-center gap-2" onClick={addSpend}><Plus size={16} /> Add spend</button>
+            <button className="rounded-xl px-3 py-2 text-sm text-gray-700 bg-gray-100" onClick={() => setOpen(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -280,54 +236,26 @@ export default function Budget() {
   )
 }
 
-function SummaryCard({
-  title,
-  value,
-  sub,
-  icon,
-}: {
-  title: string
-  value: string
-  sub?: string
-  icon: React.ReactNode
-}) {
+function SummaryCard({ title, value, sub, icon }: { title: string, value: string, sub?: string, icon: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-white/15 p-3 text-white">
       <div className="text-xs opacity-80">{title}</div>
-      <div className="mt-0.5 text-base font-semibold flex items-center gap-2">
-        {icon} {value}
-      </div>
+      <div className="mt-0.5 text-base font-semibold flex items-center gap-2">{icon} {value}</div>
       {sub && <div className="text-xs opacity-90 mt-0.5">{sub}</div>}
     </div>
   )
 }
 
-function SpendList({
-  spends,
-  onRemove,
-}: {
-  spends: {
-    id: string
-    date: string
-    area: Area
-    label: string
-    currency: Currency
-    amount: number
-    notes?: string
-  }[]
-  onRemove: (id: string) => void
-}) {
+function SpendList({ spends, onRemove }: { spends: { id: string, date: string, area: Area, label: string, currency: Currency, amount: number, notes?: string }[], onRemove: (id: string) => void }) {
   if (spends.length === 0) {
     return <div className="card p-4 text-sm text-gray-600">No spends yet. Add your first one.</div>
   }
 
-  // group by date
   const groups = new Map<string, typeof spends>()
   for (const s of spends) {
     if (!groups.has(s.date)) groups.set(s.date, [])
     groups.get(s.date)!.push(s)
   }
-
   const dates = Array.from(groups.keys()).sort((a, b) => (a < b ? 1 : -1))
 
   return (
@@ -338,9 +266,7 @@ function SpendList({
             {new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
           </div>
           <div className="divide-y divide-gray-100">
-            {groups.get(d)!.map(s => (
-              <SpendRow key={s.id} spend={s} onRemove={onRemove} />
-            ))}
+            {groups.get(d)!.map(s => <SpendRow key={s.id} spend={s} onRemove={onRemove} />)}
           </div>
         </div>
       ))}
@@ -348,51 +274,24 @@ function SpendList({
   )
 }
 
-function SpendRow({
-  spend,
-  onRemove,
-}: {
-  spend: {
-    id: string
-    date: string
-    area: Area
-    label: string
-    currency: Currency
-    amount: number
-    notes?: string
-  }
-  onRemove: (id: string) => void
-}) {
+function SpendRow({ spend, onRemove }: { spend: { id: string, date: string, area: Area, label: string, currency: Currency, amount: number, notes?: string }, onRemove: (id: string) => void }) {
   const { state } = useContext(AppContext)
   const gbp = useMemo(() => convert(spend.amount, spend.currency, 'GBP', state.rates), [spend, state.rates])
 
   return (
     <div className="py-2 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <span
-          className={
-            'inline-flex h-8 w-8 items-center justify-center rounded-xl ' +
-            (spend.area === 'Samui' ? 'bg-orange-50 text-orange-600' : 'bg-cyan-50 text-cyan-700')
-          }
-          title={spend.area}
-        >
+        <span className={'inline-flex h-8 w-8 items-center justify-center rounded-xl ' + (spend.area === 'Samui' ? 'bg-orange-50 text-orange-600' : 'bg-cyan-50 text-cyan-700')} title={spend.area}>
           {spend.area === 'Samui' ? 'S' : 'D'}
         </span>
         <div>
           <div className="text-sm font-medium text-gray-900">{spend.label}</div>
           <div className="text-xs text-gray-600">
-            {spend.amount.toFixed(2)} {spend.currency}, about {formatGBP(gbp)}
-            {spend.notes ? `, ${spend.notes}` : ''}
+            {spend.amount.toFixed(2)} {spend.currency}, about {formatGBP(gbp)}{spend.notes ? `, ${spend.notes}` : ''}
           </div>
         </div>
       </div>
-
-      <button
-        className="rounded-xl p-2 hover:bg-gray-100 text-gray-600"
-        onClick={() => onRemove(spend.id)}
-        aria-label="Delete spend"
-        title="Delete"
-      >
+      <button className="rounded-xl p-2 hover:bg-gray-100 text-gray-600" onClick={() => onRemove(spend.id)} aria-label="Delete spend" title="Delete">
         <Trash2 size={16} />
       </button>
     </div>
