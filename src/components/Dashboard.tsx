@@ -442,6 +442,186 @@ function groupByDate<T extends { date: string }>(items: T[]) {
     return cy - Math.cos(a) * radius
   }
 
+// City meta for hourly fetching (local timezones)
+const CITY_META = {
+  'Koh Samui': { lat: 9.512,  lon: 100.013, tz: 'Asia/Bangkok' },
+  'Doha':      { lat: 25.285, lon: 51.531,  tz: 'Asia/Qatar'   },
+} as const
+
+type CityName = keyof typeof CITY_META
+
+function isoTodayInTZ(tz: string) {
+  // Get YYYY-MM-DD for "today" in the target timezone
+  const now = new Date()
+  // format to that tz via toLocaleString and then rebuild a Date
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now)
+  const y = parts.find(p => p.type === 'year')!.value
+  const m = parts.find(p => p.type === 'month')!.value
+  const d = parts.find(p => p.type === 'day')!.value
+  return `${y}-${m}-${d}`
+}
+
+async function fetchHourlyForToday(city: CityName) {
+  const { lat, lon, tz } = CITY_META[city]
+  const day = isoTodayInTZ(tz)
+  const url =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=${lat}&longitude=${lon}` +
+    `&hourly=temperature_2m,precipitation_probability,wind_speed_10m,relative_humidity_2m,weathercode` +
+    `&timezone=${encodeURIComponent(tz)}` +
+    `&start_date=${day}&end_date=${day}`
+
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Hourly HTTP ' + res.status)
+  const j = await res.json()
+
+  // Build an array of { timeLocal, hourLabel, temp, pop, wind, rh, code }
+  const times: string[] = j.hourly.time ?? []
+  const out = times.map((iso: string, i: number) => {
+    const dt = new Date(iso) // already localized by API timezone param
+    const hourLabel = dt.toLocaleTimeString(undefined, { hour: '2-digit', hour12: false })
+    return {
+      iso,
+      hourLabel,
+      temp: Math.round(j.hourly.temperature_2m?.[i] ?? 0),
+      pop: j.hourly.precipitation_probability?.[i] ?? 0,
+      wind: Math.round(j.hourly.wind_speed_10m?.[i] ?? 0),
+      rh: j.hourly.relative_humidity_2m?.[i] ?? 0,
+      code: j.hourly.weathercode?.[i] ?? 0,
+    }
+  })
+  return { tz, day, rows: out }
+}
+
+function CityDetailModal({
+  city,
+  onClose,
+}: {
+  city: CityName
+  onClose: () => void
+}) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<{
+    tz: string
+    day: string
+    rows: Array<{ iso:string; hourLabel:string; temp:number; pop:number; wind:number; rh:number; code:number }>
+  } | null>(null)
+
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      try {
+        setLoading(true)
+        const got = await fetchHourlyForToday(city)
+        if (!cancel) setData(got)
+      } catch {
+        if (!cancel) setError('Could not load hourly weather')
+      } finally {
+        if (!cancel) setLoading(false)
+      }
+    })()
+    return () => { cancel = true }
+  }, [city])
+
+  // lock body scroll
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="dialog" aria-modal="true"
+        className="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[460px]
+                   bg-white rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4
+                   max-h-[80vh] sm:max-h-screen overflow-y-auto overscroll-contain"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between sticky top-0 bg-white pb-2">
+          <div>
+            <div className="text-base font-semibold">{city} — today</div>
+            <div className="text-xs text-gray-600">
+              {data?.day} · {data?.tz}
+            </div>
+          </div>
+          <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+        {loading && <p className="mt-3 text-sm text-gray-600">Loading hourly…</p>}
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+        {data && !loading && !error && (
+          <div className="mt-3 space-y-4">
+            {/* A simple horizontally-scrollable row of hour blocks */}
+            <div className="rounded-2xl border border-gray-200 p-2">
+              <div className="text-sm font-medium mb-1">Temperature (°C)</div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {data.rows.map(r => (
+                  <div key={r.iso} className="min-w-[64px] py-2 px-2 rounded-xl bg-gray-50 text-center">
+                    <div className="text-[11px] text-gray-600">{r.hourLabel}</div>
+                    <div className="text-base font-semibold">{r.temp}°</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-gray-200 p-2">
+                <div className="text-sm font-medium mb-1">Rain chance (%)</div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {data.rows.map(r => (
+                    <div key={'p'+r.iso} className="min-w-[64px] py-2 px-2 rounded-xl bg-gray-50 text-center">
+                      <div className="text-[11px] text-gray-600">{r.hourLabel}</div>
+                      <div className="text-base font-semibold">{r.pop}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 p-2">
+                <div className="text-sm font-medium mb-1">Wind (km/h)</div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {data.rows.map(r => (
+                    <div key={'w'+r.iso} className="min-w-[64px] py-2 px-2 rounded-xl bg-gray-50 text-center">
+                      <div className="text-[11px] text-gray-600">{r.hourLabel}</div>
+                      <div className="text-base font-semibold">{r.wind}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 p-2 sm:col-span-2">
+                <div className="text-sm font-medium mb-1">Humidity (%)</div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {data.rows.map(r => (
+                    <div key={'h'+r.iso} className="min-w-[64px] py-2 px-2 rounded-xl bg-gray-50 text-center">
+                      <div className="text-[11px] text-gray-600">{r.hourLabel}</div>
+                      <div className="text-base font-semibold">{r.rh}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Times shown in local time · tap Close to return.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
 /* =========================================================
    Weather
    ========================================================= */
@@ -449,6 +629,7 @@ function WeatherBlock() {
   const [data, setData] = useState<WeatherData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [detail, setDetail] = useState<CityName | null>(null)
 
   async function fetchForecast(lat: number, lon: number, tz = 'Europe/London') {
     const url =
@@ -530,13 +711,23 @@ const weatherIcons: Record<number, JSX.Element> = {
 function City({
   name,
   days,
+  onOpenDetail,
 }: {
-  name: string
+  name: CityName
   days: { date: string; min: number; max: number; code: number }[]
+  onOpenDetail?: (c: CityName) => void
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 p-3">
-      <div className="text-sm font-medium mb-1">{name}</div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-sm font-medium">{name}</div>
+        <button
+          className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+          onClick={() => onOpenDetail?.(name)}
+        >
+          Today details
+        </button>
+      </div>
       <div className="space-y-1 text-sm">
         {days.map((d) => (
           <div key={d.date} className="flex justify-between items-center gap-2">
@@ -553,6 +744,7 @@ function City({
     </div>
   )
 }
+
 
 /* =========================================================
    Currency (compact, refreshed, centered chips)
