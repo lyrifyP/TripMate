@@ -1,52 +1,26 @@
-// src/lib/flight.ts
+// lib/flight.ts
 export type LiveFlightStatus = {
-    flight: {
-      iata: string | null
-      icao: string | null
-      number: string | null
-      airline: string | null
-      status: string | null
-    }
-    departure: {
-      airport: string | null
-      iata: string | null
-      terminal: string | null
-      gate: string | null
-      scheduled: string | null
-      estimated: string | null
-      actual: string | null
-    }
-    arrival: {
-      airport: string | null
-      iata: string | null
-      terminal: string | null
-      gate: string | null
-      baggage: string | null
-      scheduled: string | null
-      estimated: string | null
-      actual: string | null
-    }
-    live: any | null
+    flight: { airline?: string, iata?: string, icao?: string, status?: string }
+    departure: { airport?: string, iata?: string, terminal?: string, gate?: string, scheduled?: string, estimated?: string, actual?: string }
+    arrival:   { airport?: string, iata?: string, terminal?: string, gate?: string, scheduled?: string, estimated?: string, actual?: string, baggage?: string }
   }
   
-  export async function fetchFlightStatus(flightNumber: string, date?: string): Promise<LiveFlightStatus> {
-    const url = new URL('/api/flight', window.location.origin)
-    url.searchParams.set('number', flightNumber)
-    if (date) url.searchParams.set('date', date)
-  
-    const r = await fetch(url.toString())
-    if (!r.ok) {
-      throw new Error(`Flight API ${r.status}`)
-    }
-    return r.json()
+  function normalise(raw: string) {
+    return raw.replace(/\s+/g, '').toUpperCase()
   }
   
-  export function pctComplete(startISO?: string | null, endISO?: string | null, now = new Date()) {
-    if (!startISO || !endISO) return 0
-    const s = new Date(startISO).getTime()
-    const e = new Date(endISO).getTime()
-    const n = now.getTime()
-    if (e <= s) return 0
-    return Math.max(0, Math.min(100, Math.round(((n - s) / (e - s)) * 100)))
+  export async function fetchFlightStatus(flightNumRaw: string, dateISO?: string): Promise<LiveFlightStatus> {
+    const num = normalise(flightNumRaw)
+    if (!/^[A-Z]{2}\d{2,4}$/.test(num)) throw new Error('Flight number looks invalid')
+  
+    const qs = new URLSearchParams({ num })
+    if (dateISO) qs.set('date', dateISO)
+  
+    const res = await fetch(`/api/flight?${qs.toString()}`)
+    if (!res.ok) {
+      const msg = await res.text().catch(() => '')
+      throw new Error(msg || `Lookup failed ${res.status}`)
+    }
+    return res.json()
   }
   

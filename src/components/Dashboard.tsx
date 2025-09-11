@@ -4,7 +4,8 @@ import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
 import NewsCard from './NewsCard'
-import { fetchFlightStatus, pctComplete, LiveFlightStatus } from '../lib/flight'
+import { fetchFlightStatus, LiveFlightStatus } from '../lib/flight'
+import { pctComplete} from '../lib/utils'
 import {
   CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
   Sun, SunMedium, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
