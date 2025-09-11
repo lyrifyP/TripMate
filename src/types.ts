@@ -30,6 +30,7 @@ export type Restaurant = {
   approxCostGBP?: number
   proximity?: string
   favourite?: boolean
+  imageUrl?: string
 }
 
 export type ChecklistItem = {

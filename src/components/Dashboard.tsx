@@ -27,6 +27,11 @@ export default function Dashboard() {
   <ConciergeCard />
 </CollapsibleCard>
 
+<div className="space-y-4">
+      <CollapsibleCard title="Swipe picks" storageKey="home.swipe" defaultOpen={true}>
+        <RestaurantSwipeCard />
+      </CollapsibleCard>
+    </div>
 
       <CollapsibleCard title="Travel news" storageKey="home.news" defaultOpen>
   <NewsCard
