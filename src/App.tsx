@@ -57,6 +57,7 @@ const DEFAULT_STATE: AppState = {
     { id: 'flight-doha', label: 'Flight to Doha', atISO: '2025-09-24T22:45:00+07:00' },
   ],
   steps: {},
+  weather: null,
 }
 
 type Ctx = {

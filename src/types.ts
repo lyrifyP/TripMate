@@ -52,9 +52,11 @@ export type PlanItem = {
   notes?: string
 }
 
-export type WeatherDay = { date: string; min: number; max: number; code: number }
+// add these if they are missing
+export type WeatherDay = { date: string; min: number; max: number; code: number; precipProb?: number; precipMm?: number }
 export type WeatherData = { samui: WeatherDay[]; doha: WeatherDay[]; error?: string }
 
+// update AppState
 export type AppState = {
   startISO: string
   endISO: string
@@ -65,4 +67,5 @@ export type AppState = {
   plan: PlanItem[]
   specialEvents: { id: string, label: string, atISO: string }[]
   steps?: Record<string, number>
+  weather?: WeatherData | null
 }

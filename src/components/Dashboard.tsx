@@ -22,6 +22,11 @@ export default function Dashboard() {
     <div className="space-y-4">
       <Hero />
 
+      <CollapsibleCard title="Concierge" storageKey="home.concierge">
+  <ConciergeCard />
+</CollapsibleCard>
+
+
       <CollapsibleCard title="Travel news" storageKey="home.news" defaultOpen>
   <NewsCard
     query='(Doha OR Qatar) OR ("Koh Samui" OR Thailand)'
