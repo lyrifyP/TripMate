@@ -11,13 +11,16 @@ import Dining from './components/Dining'
 import Checklist from './components/Checklist'
 import Planner from './components/Planner'
 
-// Cloud sync helpers (Option A)
+// cloud sync
 import {
   loadState as cloudLoad,
   saveState as cloudSave,
   subscribeState,
   debounce,
 } from './lib/sync'
+
+// weather fetch with hourly support
+import { getWeatherData } from './lib/weather'
 
 // seeds
 import restaurantsSeed from './seed/restaurants.json'
@@ -58,6 +61,7 @@ const DEFAULT_STATE: AppState = {
   ],
   steps: {},
   weather: null,
+  budget: null,
 }
 
 type Ctx = {
@@ -67,18 +71,16 @@ type Ctx = {
 }
 export const AppContext = createContext<Ctx>(null as any)
 
-// Feature flag so you can disable cloud quickly if needed
+// feature flag
 const CLOUD_SYNC = true
 
 function getTripId(): string {
-  // 1) allow ?trip=XYZ (shareable links)
   const url = new URL(window.location.href)
   const fromUrl = url.searchParams.get('trip')
   if (fromUrl) {
     localStorage.setItem('tripmate.tripId', fromUrl)
     return fromUrl
   }
-  // 2) or reuse / create
   const existing = localStorage.getItem('tripmate.tripId')
   if (existing) return existing
   const created = 'trip_' + Math.random().toString(36).slice(2, 10)
@@ -90,10 +92,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [state, setState] = useState<AppState>(() => loadLocal(DEFAULT_STATE))
 
-  // Always persist to local storage
+  // persist to local storage
   useEffect(() => { saveLocal(state) }, [state])
 
-  // Live FX once on mount (skip if manual override)
+  // live FX on mount if not manually overridden
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -104,17 +106,31 @@ export default function App() {
           setState(s => ({ ...s, rates: { ...s.rates, ...live, lastUpdatedISO: new Date().toISOString() } }))
         }
       } catch {
-        // ignore fetch error
+        // ignore
       }
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // once
+  }, [])
 
-  // ---------- Cloud sync (Option A: tripId only) ----------
+  // load weather with hourly data on mount
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await getWeatherData('Europe/London')
+        if (!cancelled) setState(s => ({ ...s, weather: data }))
+      } catch (err) {
+        console.warn('Weather fetch failed:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // cloud sync
   const tripId = useMemo(() => getTripId(), [])
 
-  // 1) On mount, try to load from cloud; if present, adopt it
+  // load from cloud on mount
   useEffect(() => {
     if (!CLOUD_SYNC) return
     let cancelled = false
@@ -129,20 +145,14 @@ export default function App() {
     return () => { cancelled = true }
   }, [tripId])
 
-// 2) Subscribe to remote changes for this trip and adopt them
-useEffect(() => {
-  if (!CLOUD_SYNC) return;
+  // subscribe to cloud changes
+  useEffect(() => {
+    if (!CLOUD_SYNC) return
+    const unsubscribe = subscribeState({ tripId }, next => { setState(next) })
+    return () => { unsubscribe() }
+  }, [tripId])
 
-  const unsubscribe = subscribeState({ tripId }, (next) => {
-    setState(next);
-  });
-
-  return () => {
-    unsubscribe();
-  };
-}, [tripId]);
-
-  // 3) Debounced push to cloud whenever local state changes
+  // debounced push to cloud
   const debouncedCloudSave = useMemo(
     () => debounce((s: AppState) => {
       cloudSave({ tripId }, s).catch(err => console.warn('Cloud save failed:', err))
@@ -153,7 +163,6 @@ useEffect(() => {
     if (!CLOUD_SYNC) return
     debouncedCloudSave(state)
   }, [state, debouncedCloudSave])
-  // ---------- /Cloud sync ----------
 
   const tabs = [
     { id: 'home' as Tab, label: 'Home', icon: HomeIcon, component: Dashboard },

@@ -52,10 +52,6 @@ export type PlanItem = {
   notes?: string
 }
 
-// add these if they are missing
-export type WeatherDay = { date: string; min: number; max: number; code: number; precipProb?: number; precipMm?: number }
-export type WeatherData = { samui: WeatherDay[]; doha: WeatherDay[]; error?: string }
-
 // update AppState
 export type AppState = {
   startISO: string
@@ -75,4 +71,29 @@ export type BudgetPlan = {
   totalGBP?: number
   byArea?: Partial<Record<Area, number>>
   byCategory?: Partial<Record<'Food'|'Travel'|'Activities'|'Other', number>>
+}
+
+// types.ts
+export type WeatherHour = {
+  timeISO: string
+  precipProb?: number
+  precipMm?: number
+  tempC?: number
+}
+
+export type WeatherDay = {
+  date: string
+  min: number
+  max: number
+  code: number
+  precipProb?: number
+  precipMm?: number
+  summary?: string
+  hours?: WeatherHour[]
+}
+
+export type WeatherData = {
+  samui: WeatherDay[]
+  doha: WeatherDay[]
+  error?: string
 }
