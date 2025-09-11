@@ -144,7 +144,10 @@ function Hero() {
    function FlightsAtGlance() {
     const { state, setActiveTab } = useContext(AppContext)
   
+    // flights sheet
     const [open, setOpen] = useState(false)
+  
+    // lock body scroll when flights sheet open
     useEffect(() => {
       if (!open) return
       const prev = document.body.style.overflow
@@ -152,14 +155,17 @@ function Hero() {
       return () => { document.body.style.overflow = prev }
     }, [open])
   
+    // live flight status modal state
     const [liveOpen, setLiveOpen] = useState(false)
     const [liveLoading, setLiveLoading] = useState(false)
     const [liveError, setLiveError] = useState<string | null>(null)
     const [liveData, setLiveData] = useState<LiveFlightStatus | null>(null)
-    const [liveTitle, setLiveTitle] = useState<string>('')
+    const [liveTitle, setLiveTitle] = useState<string>('') // e.g. QR24
   
+    // helper, detect a flight number in a title
     const hasFlightNum = (title: string) => /\b[A-Z]{2}\s?\d{2,4}\b/.test(title)
   
+    // open live status modal, parse flight number from title
     async function openLive(title: string, dateISO?: string) {
       const match = title.match(/\b[A-Z]{2}\s?\d{2,4}\b/)
       const flightNum = match ? match[0].replace(/\s+/g, '') : ''
@@ -184,20 +190,22 @@ function Hero() {
       }
     }
   
+    // choose flight-like items from the plan
     const isFlightLike = (t: string) =>
       t.startsWith('Depart') || t.startsWith('Arrive') || t.startsWith('Check in') || t.startsWith('Transfer')
   
     const withWhen = state.plan
-      .filter(p => isFlightLike(p.title))
+      .filter(p => p?.title && isFlightLike(p.title))
       .map(p => {
         const time = p.time ? p.time : '00:01'
         const at = new Date(`${p.date}T${time}`)
         return { ...p, at }
       })
+      .filter(p => !isNaN(p.at.getTime()))
       .sort((a, b) => a.at.getTime() - b.at.getTime())
   
-    const now = new Date()
-    const upcoming = withWhen.filter(p => p.at.getTime() >= now.getTime()).slice(0, 4)
+    const now = Date.now()
+    const upcoming = withWhen.filter(p => p.at.getTime() >= now).slice(0, 4)
     const next = upcoming[0]
   
     const iconFor = (title: string) => {
@@ -224,7 +232,7 @@ function Hero() {
             <button
               className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
               onClick={() => setOpen(true)}
-              title="Flights & transfers"
+              title="Flights and transfers"
               aria-haspopup="dialog"
               aria-expanded={open}
             >
@@ -296,10 +304,177 @@ function Hero() {
           </div>
         )}
   
-        {/* flights sheet and live modal remain unchanged */}
+        {/* flights only modal */}
+        {open && (
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[420px]
+                         bg-white rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4
+                         max-h-[80vh] sm:max-h-screen overflow-y-auto overscroll-contain"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between sticky top-0 bg-white pb-2">
+                <h3 className="text-base font-semibold">Flights and transfers</h3>
+                <button
+                  className="rounded-xl bg-gray-100 px-3 py-1 text-sm"
+                  onClick={() => setOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+  
+              <div className="mt-3 space-y-3">
+                {groupByDate(withWhen).map(g => (
+                  <div key={g.date} className="rounded-2xl border border-gray-200 p-3">
+                    <div className="text-sm font-medium mb-2">
+                      {new Date(g.date).toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </div>
+                    <div className="space-y-2">
+                      {g.items.map(it => (
+                        <div key={it.id} className="flex items-center justify-between text-sm gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {iconFor(it.title)}
+                            <span className="truncate">{it.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasFlightNum(it.title) && (
+                              <button
+                                className="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-gray-200"
+                                title="Live status"
+                                onClick={() => openLive(it.title, it.date)}
+                              >
+                                Live
+                              </button>
+                            )}
+                            <div className="text-gray-600">{it.time || '—'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+  
+        {/* live status modal */}
+        {liveOpen && (
+          <div className="fixed inset-0 z-50" onClick={() => setLiveOpen(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div
+              className="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[420px]
+                         bg-white rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4
+                         max-h-[80vh] sm:max-h-screen overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+              role="dialog" aria-modal="true"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">Live flight status {liveTitle ? `• ${liveTitle}` : ''}</h3>
+                <button className="rounded-xl bg-gray-100 px-3 py-1 text-sm" onClick={() => setLiveOpen(false)}>
+                  Close
+                </button>
+              </div>
+  
+              {liveLoading && <p className="mt-3 text-sm text-gray-600">Fetching latest status…</p>}
+              {liveError && <p className="mt-3 text-sm text-red-600">{liveError}</p>}
+  
+              {liveData && (
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-2xl border border-gray-200 p-3">
+                    <div className="text-sm font-medium">
+                      {liveData.flight.airline ?? 'Airline'} — {liveData.flight.iata ?? liveData.flight.icao ?? '—'}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      Status: <span className="font-medium">{liveData.flight.status ?? 'unknown'}</span>
+                    </div>
+                  </div>
+  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-gray-200 p-3">
+                      <div className="text-xs text-gray-500">Departure</div>
+                      <div className="text-sm font-medium">{liveData.departure.airport ?? '—'}</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        {liveData.departure.iata ?? ''} {liveData.departure.terminal ? `T${liveData.departure.terminal}` : ''} {liveData.departure.gate ? `• Gate ${liveData.departure.gate}` : ''}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Sched: {liveData.departure.scheduled ? new Date(liveData.departure.scheduled).toLocaleString() : '—'}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Est: {liveData.departure.estimated ? new Date(liveData.departure.estimated).toLocaleString() : '—'}
+                      </div>
+                    </div>
+  
+                    <div className="rounded-2xl border border-gray-200 p-3">
+                      <div className="text-xs text-gray-500">Arrival</div>
+                      <div className="text-sm font-medium">{liveData.arrival.airport ?? '—'}</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        {liveData.arrival.iata ?? ''} {liveData.arrival.terminal ? `T${liveData.arrival.terminal}` : ''} {liveData.arrival.gate ? `• Gate ${liveData.arrival.gate}` : ''}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Sched: {liveData.arrival.scheduled ? new Date(liveData.arrival.scheduled).toLocaleString() : '—'}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Est: {liveData.arrival.estimated ? new Date(liveData.arrival.estimated).toLocaleString() : '—'}
+                      </div>
+                      {liveData.arrival.baggage && (
+                        <div className="text-xs text-gray-600 mt-1">Baggage: {liveData.arrival.baggage}</div>
+                      )}
+                    </div>
+                  </div>
+  
+                  <div className="rounded-2xl border border-gray-200 p-3">
+                    <div className="text-sm font-medium mb-1">In flight progress</div>
+                    {(() => {
+                      const start = liveData.departure.actual || liveData.departure.estimated || liveData.departure.scheduled
+                      const end   = liveData.arrival.estimated || liveData.arrival.scheduled || liveData.arrival.actual
+                      const pct   = pctComplete(start, end)
+                      return (
+                        <>
+                          <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                            <span className="block h-full bg-sky-500" style={{ width: pct + '%' }} />
+                          </div>
+                          <div className="mt-1 text-xs text-gray-600">{pct}% complete</div>
+                        </>
+                      )
+                    })()}
+                  </div>
+  
+                  <div className="text-xs text-gray-600">
+                    Open full tracker:{' '}
+                    {liveTitle ? (
+                      <>
+                        <a
+                          className="underline"
+                          href={`https://www.flightradar24.com/${encodeURIComponent(liveTitle)}`}
+                          target="_blank" rel="noreferrer"
+                        >FlightRadar24</a>
+                        {' · '}
+                        <a
+                          className="underline"
+                          href={`https://flightaware.com/live/flight/${encodeURIComponent(liveTitle)}`}
+                          target="_blank" rel="noreferrer"
+                        >FlightAware</a>
+                      </>
+                    ) : '—'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </>
     )
   }
+  
   
   
   
