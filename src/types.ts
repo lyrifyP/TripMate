@@ -68,4 +68,11 @@ export type AppState = {
   specialEvents: { id: string, label: string, atISO: string }[]
   steps?: Record<string, number>
   weather?: WeatherData | null
+  budget?: BudgetPlan | null
+}
+
+export type BudgetPlan = {
+  totalGBP?: number
+  byArea?: Partial<Record<Area, number>>
+  byCategory?: Partial<Record<'Food'|'Travel'|'Activities'|'Other', number>>
 }

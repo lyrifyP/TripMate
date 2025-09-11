@@ -23,7 +23,7 @@ export default function Dashboard() {
     <div className="space-y-4">
       <Hero />
 
-      <CollapsibleCard title="Concierge" storageKey="home.concierge">
+      <CollapsibleCard title="Smart Concierge" storageKey="home.concierge">
   <ConciergeCard />
 </CollapsibleCard>
 

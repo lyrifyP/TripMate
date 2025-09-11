@@ -9,8 +9,9 @@ export default function ConciergeCard() {
   const [q, setQ] = useState('')
   const [a, setA] = useState('')
   const [loading, setLoading] = useState(false)
+  const [area, setArea] = useState<'Samui' | 'Doha'>('Samui')
 
-  const ctx = useMemo(() => buildConciergeContext(state, { area: 'Samui' }), [state])
+  const ctx = useMemo(() => buildConciergeContext(state, { area }), [state, area])
 
   async function onAsk(e?: React.FormEvent) {
     e?.preventDefault()
@@ -33,29 +34,48 @@ export default function ConciergeCard() {
 
   return (
     <div className="space-y-3 rounded-2xl border border-gray-200 p-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">TripMate Concierge</h3>
+      {/* Area toggle */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setArea('Samui')}
+          className={`px-3 py-1 rounded-lg text-sm ${
+            area === 'Samui' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'
+          }`}
+        >
+          Samui
+        </button>
+        <button
+          type="button"
+          onClick={() => setArea('Doha')}
+          className={`px-3 py-1 rounded-lg text-sm ${
+            area === 'Doha' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'
+          }`}
+        >
+          Doha
+        </button>
       </div>
 
-      <form onSubmit={onAsk} className="flex gap-2">
+      {/* Input and actions */}
+      <form onSubmit={onAsk} className="flex flex-wrap items-stretch gap-2">
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
           placeholder="Ask about plans, food, or budget"
-          className="flex-1 px-3 py-2 rounded-xl border border-gray-300"
+          className="min-w-0 flex-1 px-3 py-2 rounded-xl border border-gray-300"
         />
         <button
           type="submit"
           disabled={loading}
-          className="px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-50"
+          className="shrink-0 whitespace-nowrap min-w-[88px] px-3 py-2 rounded-xl bg-black text-white text-sm disabled:opacity-50 text-center"
         >
-          {loading ? 'Thinking...' : 'Ask'}
+          {loading ? 'Thinking…' : 'Ask'}
         </button>
         {a && (
           <button
             type="button"
             onClick={onClear}
-            className="px-3 py-2 rounded-xl bg-gray-200 text-gray-700 text-sm"
+            className="shrink-0 whitespace-nowrap min-w-[88px] px-3 py-2 rounded-xl bg-gray-200 text-gray-700 text-sm text-center"
           >
             Clear
           </button>
