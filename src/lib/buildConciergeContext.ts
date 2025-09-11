@@ -1,9 +1,17 @@
+// src/lib/buildConciergeContext.ts
 import type { AppState, Spend } from '../types'
 
-export function buildConciergeContext(state: AppState, opts?: { area?: 'Samui'|'Doha' }) {
-  const area = opts?.area || 'Samui'
-  const today = new Date().toISOString().slice(0, 10)
+type BuildOpts = {
+  area?: 'Samui' | 'Doha'
+  dateISO?: string
+  includeMoney?: boolean
+}
 
+export function buildConciergeContext(state: AppState, opts?: BuildOpts) {
+  const area = opts?.area || 'Samui'
+  const dateISO = opts?.dateISO || new Date().toISOString().slice(0, 10)
+
+  // Restaurants from both areas, the model will prioritise focusArea
   const restaurants = state.restaurants.map(r => ({
     name: r.name,
     area: r.area,
@@ -15,29 +23,44 @@ export function buildConciergeContext(state: AppState, opts?: { area?: 'Samui'|'
     favourite: !!r.favourite,
   }))
 
-  const planToday = state.plan
-    .filter(p => p.date === today)
+  // Plan for the selected day
+  const planForDay = state.plan
+    .filter(p => p.date === dateISO)
     .map(p => ({ time: p.time, kind: p.kind, title: p.title, area: p.area }))
 
-  const spend = summariseSpend(state.spends, state.rates)             // spent-to-date
-  const budget = state.budget || null                                  // optional targets
+  // Compact weather, only the selected area and day
+  const weather = state.weather
+    ? { focusArea: area, day: pickDay(state, area, dateISO) }
+    : undefined
 
-  const weather = state.weather ? {                                    // unchanged
-    [area.toLowerCase()]: pickDay(state, area, today)
-  } : undefined
-
-  return {
-    meta: { startISO: state.startISO, endISO: state.endISO, focusArea: area },
-    restaurants,               // now includes both Samui and Doha entries
-    planToday,
-    money: { spend, budget },  // clear naming, spend != budget
-    weather
+  const payload: any = {
+    meta: { startISO: state.startISO, endISO: state.endISO, focusArea: area, dateISO },
+    restaurants,
+    planForDay,
+    weather,
   }
+
+  if (opts?.includeMoney) {
+    payload.money = {
+      spend: summariseSpend(state.spends, state.rates),
+      budget: (state as any).budget || null, // optional in your AppState
+    }
+  }
+
+  return payload
 }
 
-function summariseSpend(spends: Spend[], rates: any) {
-  const toGBP = (c: 'GBP'|'THB'|'QAR', amt: number) =>
-    c === 'GBP' ? amt : c === 'THB' ? amt / (rates.THB || 1) : amt / (rates.QAR || 1)
+function pickDay(state: AppState, area: 'Samui' | 'Doha', dateISO: string) {
+  const list = area === 'Samui' ? state.weather?.samui : state.weather?.doha
+  return list?.find(d => d.date === dateISO) || list?.[0] || null
+}
+
+function summariseSpend(spends: Spend[], rates: { GBP: number; THB: number; QAR: number }) {
+  const toGBP = (c: 'GBP' | 'THB' | 'QAR', amt: number) => {
+    if (c === 'GBP') return amt
+    if (c === 'THB') return amt / (rates.THB || 1)
+    return amt / (rates.QAR || 1)
+  }
 
   const totalGBP = spends.reduce((sum, s) => sum + toGBP(s.currency as any, s.amount), 0)
 
@@ -45,15 +68,10 @@ function summariseSpend(spends: Spend[], rates: any) {
     const gbp = toGBP(s.currency as any, s.amount)
     acc[s.area] = (acc[s.area] || 0) + gbp
     return acc
-  }, {} as Record<'Samui'|'Doha', number>)
+  }, {} as Record<'Samui' | 'Doha', number>)
 
   return {
     totalGBP: Math.round(totalGBP * 100) / 100,
-    byArea
+    byArea,
   }
-}
-
-function pickDay(state: AppState, area: 'Samui'|'Doha', dateISO: string) {
-  const list = area === 'Samui' ? state.weather?.samui : state.weather?.doha
-  return list?.find(d => d.date === dateISO) || list?.[0] || null
 }
