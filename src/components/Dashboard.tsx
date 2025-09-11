@@ -4,7 +4,7 @@ import { betweenPercent, countdown, fmtDate } from '../lib/utils'
 import { convert, fetchLiveRates } from '../lib/currency'
 import type { Currency, WeatherData } from '../types'
 import NewsCard from './NewsCard'
-import { fetchFlightStatus, pctComplete } from '../lib/flight'
+import { fetchFlightStatus, pctComplete, LiveFlightStatus } from '../lib/flight'
 import {
   CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
   Sun, SunMedium, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
@@ -899,7 +899,7 @@ function City({
           className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
           onClick={() => onOpenDetail?.(name)}
         >
-          Today details
+          Details
         </button>
       </div>
       <div className="space-y-1 text-sm">
