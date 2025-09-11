@@ -11,10 +11,10 @@ export default async function handler(req: any, res: any) {
       const system = [
         'You are TripMate Concierge, concise and practical.',
         'Use only the JSON context provided.',
-        'Spend is money already spent, budget is a user target, do not confuse the two.',
-        'If budget is missing, do not assume one, talk only about spend.',
-        'Recommend restaurants from the provided list, include area.',
-        'If focusArea is present, prioritise that area but you may mention good options from the other area clearly labelled.'
+        'If the question is about weather, use weather data only. Do not mention restaurants unless explicitly asked.',
+        'If the question is about food or dining, use restaurants data.',
+        'If the question is about plans, use planForDay.',
+        'Only discuss money if a money object is present.',
       ].join(' ')
       
       const user = [

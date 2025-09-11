@@ -107,7 +107,7 @@ export default function ConciergeCard() {
       )}
 
       <p className="text-xs text-gray-500">
-        The concierge uses your restaurants, plan, selected day, and weather. It only discusses money if you ask about it.
+        The concierge uses your restaurants, plan, selected day, and weather.
       </p>
     </div>
   )

@@ -1,5 +1,5 @@
 // src/lib/buildConciergeContext.ts
-import type { AppState, Spend } from '../types'
+import type { AppState, Spend, WeatherDay } from '../types'
 
 type BuildOpts = {
   area?: 'Samui' | 'Doha'
@@ -9,9 +9,9 @@ type BuildOpts = {
 
 export function buildConciergeContext(state: AppState, opts?: BuildOpts) {
   const area = opts?.area || 'Samui'
-  const dateISO = opts?.dateISO || new Date().toISOString().slice(0, 10)
+  const dateISO = opts?.dateISO || todayISO()
 
-  // Restaurants from both areas, the model will prioritise focusArea
+  // Restaurants from both areas
   const restaurants = state.restaurants.map(r => ({
     name: r.name,
     area: r.area,
@@ -28,9 +28,13 @@ export function buildConciergeContext(state: AppState, opts?: BuildOpts) {
     .filter(p => p.date === dateISO)
     .map(p => ({ time: p.time, kind: p.kind, title: p.title, area: p.area }))
 
-  // Compact weather, only the selected area and day
+  // Compact weather
   const weather = state.weather
-    ? { focusArea: area, day: pickDay(state, area, dateISO) }
+    ? {
+        focusArea: area,
+        today: pickNearestDay(state, area, dateISO),
+        tomorrow: pickNearestDay(state, area, addDaysISO(dateISO, 1)),
+      }
     : undefined
 
   const payload: any = {
@@ -50,12 +54,34 @@ export function buildConciergeContext(state: AppState, opts?: BuildOpts) {
   return payload
 }
 
-function pickDay(state: AppState, area: 'Samui' | 'Doha', dateISO: string) {
+/**
+ * Returns the exact date if present, otherwise the closest date in the list.
+ * Never returns null if there is at least one day in the area.
+ */
+function pickNearestDay(state: AppState, area: 'Samui' | 'Doha', targetISO: string): WeatherDay | null {
   const list = area === 'Samui' ? state.weather?.samui : state.weather?.doha
-  return list?.find(d => d.date === dateISO) || list?.[0] || null
+  if (!list || list.length === 0) return null
+
+  const exact = list.find(d => d.date === targetISO)
+  if (exact) return exact
+
+  const target = new Date(targetISO).getTime()
+  let best: WeatherDay = list[0]
+  let bestDiff = Math.abs(new Date(best.date).getTime() - target)
+  for (let i = 1; i < list.length; i++) {
+    const diff = Math.abs(new Date(list[i].date).getTime() - target)
+    if (diff < bestDiff) {
+      best = list[i]
+      bestDiff = diff
+    }
+  }
+  return best
 }
 
-function summariseSpend(spends: Spend[], rates: { GBP: number; THB: number; QAR: number }) {
+function summariseSpend(
+  spends: Spend[],
+  rates: { GBP: number; THB: number; QAR: number }
+) {
   const toGBP = (c: 'GBP' | 'THB' | 'QAR', amt: number) => {
     if (c === 'GBP') return amt
     if (c === 'THB') return amt / (rates.THB || 1)
@@ -74,4 +100,14 @@ function summariseSpend(spends: Spend[], rates: { GBP: number; THB: number; QAR:
     totalGBP: Math.round(totalGBP * 100) / 100,
     byArea,
   }
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function addDaysISO(dateISO: string, days: number) {
+  const d = new Date(dateISO + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
 }
