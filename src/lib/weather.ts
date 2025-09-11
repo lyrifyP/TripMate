@@ -1,5 +1,5 @@
 // src/lib/weather.ts
-import type { WeatherData, WeatherDay, WeatherHour } from '@/types'
+import type { WeatherData, WeatherDay, WeatherHour } from '../types'
 
 async function fetchOpenMeteo(lat: number, lon: number, tz: string) {
   const url =
