@@ -6,6 +6,7 @@ import type { Currency, WeatherData } from '../types'
 import NewsCard from './NewsCard'
 import { fetchFlightStatus, LiveFlightStatus } from '../lib/flight'
 import { pctComplete} from '../lib/utils'
+import ConciergeCard from './ConciergeCard'
 import {
   CalendarClock, Plane, PlaneTakeoff, PlaneLanding,
   Sun, SunMedium, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudSun,
